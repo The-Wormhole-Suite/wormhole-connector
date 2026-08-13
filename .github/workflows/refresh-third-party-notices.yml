@@ -70,6 +70,7 @@ jobs:
           git rm .github/workflows/refresh-third-party-notices.yml
           git rm .github/workflows/dependency-diagnostics.yml
           git rm .github/workflows/rebuild-dependency-lock.yml
+          git rm audit-report.json
           git add package.json package-lock.json manifest.firefox.json manifest.chrome.json THIRD_PARTY_NOTICES.txt
           git commit -m 'Prepare Wormhole Connector v5.0.1'
           git push origin HEAD:dev

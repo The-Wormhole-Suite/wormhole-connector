@@ -1,0 +1,50 @@
+name: Dependency diagnostics
+
+on:
+  pull_request:
+    branches: [dev]
+
+permissions:
+  contents: read
+
+env:
+  CI: true
+
+jobs:
+  typecheck:
+    name: diag-typecheck
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --prefer-offline --no-audit --no-fund --loglevel=error
+      - run: npm run typecheck
+
+  notices:
+    name: diag-notices
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --prefer-offline --no-audit --no-fund --loglevel=error
+      - run: npm run notices:generate
+      - run: npm run notices:check
+
+  full:
+    name: diag-full-after-notices
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: npm
+      - run: npm ci --prefer-offline --no-audit --no-fund --loglevel=error
+      - run: npm run notices:generate
+      - run: npm run check

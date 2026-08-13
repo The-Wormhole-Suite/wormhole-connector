@@ -1,5 +1,5 @@
 # One-time release validation trigger
-name: Validate dependency updates and publish v4.2.0
+name: Validate dependency updates and publish v5.0.1
 
 on:
   push:
@@ -51,19 +51,19 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git rm .github/workflows/refresh-third-party-notices.yml
           git add THIRD_PARTY_NOTICES.txt
-          git commit -m 'Refresh third-party notices for v4.2.0'
+          git commit -m 'Refresh third-party notices for v5.0.1'
           git push origin HEAD:dev
 
       - name: Tag validated dev revision
         shell: bash
         run: |
           set -euo pipefail
-          TAG='v4.2.0'
+          TAG='v5.0.1'
           if git ls-remote --exit-code --tags origin "refs/tags/${TAG}" >/dev/null 2>&1; then
             echo "Tag ${TAG} already exists." >&2
             exit 1
           fi
-          git tag -a "$TAG" -m 'Wormhole Connector 4.2.0'
+          git tag -a "$TAG" -m 'Wormhole Connector 5.0.1'
           git push origin "$TAG"
 
       - name: Start existing release workflow
@@ -72,4 +72,4 @@ jobs:
         shell: bash
         run: |
           set -euo pipefail
-          gh workflow run release.yml --repo "$GITHUB_REPOSITORY" --ref dev -f tag=v4.2.0
+          gh workflow run release.yml --repo "$GITHUB_REPOSITORY" --ref dev -f tag=v5.0.1

@@ -1,5 +1,5 @@
 # One-time release validation trigger
-name: Validate dependency updates and publish v5.0.1
+name: Validate and publish v5.0.1
 
 on:
   pull_request:
@@ -32,6 +32,26 @@ jobs:
           cache: npm
           cache-dependency-path: package-lock.json
 
+      - name: Apply repository version
+        shell: bash
+        run: |
+          set -euo pipefail
+          npm version 5.0.1 --no-git-tag-version --allow-same-version
+          RELEASE_VERSION=5.0.1 node <<'NODE'
+          const fs = require('node:fs')
+          for (const file of ['manifest.firefox.json', 'manifest.chrome.json']) {
+            const source = fs.readFileSync(file, 'utf8')
+            const updated = source.replace(
+              /(\"version\"\s*:\s*\")[^\"]+(\")/,
+              `$1${process.env.RELEASE_VERSION}$2`,
+            )
+            if (source === updated) {
+              throw new Error(`Could not update version in ${file}`)
+            }
+            fs.writeFileSync(file, updated)
+          }
+          NODE
+
       - name: Install locked dependencies
         run: npm ci --prefer-offline --no-audit --no-fund --loglevel=error
 
@@ -41,15 +61,17 @@ jobs:
       - name: Run complete project checks
         run: npm run check
 
-      - name: Commit validated notices and remove helper
+      - name: Commit validated release state and remove helpers
         shell: bash
         run: |
           set -euo pipefail
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git rm .github/workflows/refresh-third-party-notices.yml
-          git add THIRD_PARTY_NOTICES.txt
-          git commit -m 'Refresh third-party notices for v5.0.1'
+          git rm .github/workflows/dependency-diagnostics.yml
+          git rm .github/workflows/rebuild-dependency-lock.yml
+          git add package.json package-lock.json manifest.firefox.json manifest.chrome.json THIRD_PARTY_NOTICES.txt
+          git commit -m 'Prepare Wormhole Connector v5.0.1'
           git push origin HEAD:dev
 
       - name: Tag validated dev revision

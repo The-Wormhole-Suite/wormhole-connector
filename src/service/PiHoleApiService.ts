@@ -1,6 +1,11 @@
 import axios, { AxiosInstance, AxiosResponse } from 'axios'
 import { PiHoleApiStatus } from '../api/models/PiHoleApiStatus'
-import { PiHoleSettingsStorage, StorageService } from './StorageService'
+import {
+  ConnectorType,
+  getConnectorType,
+  PiHoleSettingsStorage,
+  StorageService,
+} from './StorageService'
 import { PiHoleVersionsV6 } from '../api/models/PiHoleVersions'
 import ApiListMode from '../api/enum/ApiListMode'
 import ApiList from '../api/enum/ApiList'
@@ -9,12 +14,12 @@ import { PiHoleAuth } from '../api/models/PiHoleAuth'
 import { PiHoleDomain, PiHoleDomains } from '../api/models/PiHoleDomains'
 import { PiHoleGroup, PiHoleGroups } from '../api/models/PiHoleGroups'
 import { PiHoleSearchResponse } from '../api/models/PiHoleSearch'
-import SessionService from './SessionService'
+import { getPiHoleApiBase, normalizePiHoleAddress } from './PiHoleUrl'
+import OperationCoordinator from './OperationCoordinator'
 import {
-  getPiHoleApiBaseUrl,
-  getPiHoleEndpointKey,
-} from './UrlService'
-import MultiInstanceTransactionService from './MultiInstanceTransactionService'
+  runMultiInstanceTransaction,
+  type MultiInstanceTarget,
+} from './MultiInstanceOperation'
 
 export type DomainMutationPayload = {
   comment: string | null
@@ -22,80 +27,68 @@ export type DomainMutationPayload = {
   enabled: boolean
 }
 
-export type CombinedPiHoleStatus =
-  | PiHoleApiStatusEnum.enabled
-  | PiHoleApiStatusEnum.disabled
-  | PiHoleApiStatusEnum.error
-  | PiHoleApiStatusEnum.unknown
-  | 'mixed'
-
-export type PiHoleStatusSummary = {
-  status: CombinedPiHoleStatus
-  instances: Array<{
-    endpoint: string
-    status: PiHoleApiStatusEnum
-  }>
-}
-
 type DomainListSnapshot = {
-  current?: PiHoleDomain
+  target: PiHoleDomain | null
+  opposite: PiHoleDomain | null
   groupIds: number[]
 }
 
+export const combinePiHoleStatuses = (
+  statuses: PiHoleApiStatusEnum[],
+): PiHoleApiStatusEnum => {
+  if (
+    statuses.length === 0 ||
+    statuses.some(
+      (status) =>
+        status === PiHoleApiStatusEnum.error ||
+        status === PiHoleApiStatusEnum.unknown,
+    )
+  ) {
+    return PiHoleApiStatusEnum.error
+  }
+
+  const uniqueStatuses = new Set(statuses)
+  if (uniqueStatuses.size > 1) {
+    return PiHoleApiStatusEnum.mixed
+  }
+
+  return statuses[0]
+}
+
 export default class PiHoleApiService {
+  private static readonly authenticationRequests = new Map<
+    string,
+    Promise<PiHoleAuth['session']>
+  >()
+
   public static async getConfiguredPiHoles(): Promise<PiHoleSettingsStorage[]> {
     const piHoleSettingsArray = await StorageService.getPiHoleSettingsArray()
-    if (!piHoleSettingsArray || piHoleSettingsArray.length < 1) {
+    const piHoleConnections = (piHoleSettingsArray ?? []).filter(
+      (connection) => getConnectorType(connection) === ConnectorType.piHole,
+    )
+    if (piHoleConnections.length < 1) {
       return Promise.reject('PiHoleSettings empty')
     }
 
-    for (const piHole of piHoleSettingsArray) {
+    for (const piHole of piHoleConnections) {
       if (!piHole.pi_uri_base || typeof piHole.api_key === 'undefined') {
         return Promise.reject('Some PiHoleSettings are undefined.')
       }
     }
 
-    return piHoleSettingsArray
-  }
-
-  public static async getPiHoleStatusSummary(): Promise<PiHoleStatusSummary> {
-    const piHoles = await this.getConfiguredPiHoles()
-    const instances = await Promise.all(
-      piHoles.map(async (piHole) => {
-        try {
-          const status = await this.getPiHoleStatusFor(piHole)
-          return {
-            endpoint: getPiHoleEndpointKey(piHole.pi_uri_base!),
-            status: status.blocking,
-          }
-        } catch (reason) {
-          console.warn(reason)
-          return {
-            endpoint: getPiHoleEndpointKey(piHole.pi_uri_base!),
-            status: PiHoleApiStatusEnum.error,
-          }
-        }
-      }),
-    )
-
-    const uniqueStates = new Set(instances.map(({ status }) => status))
-    return {
-      status:
-        uniqueStates.size === 1
-          ? instances[0].status
-          : uniqueStates.has(PiHoleApiStatusEnum.error)
-            ? PiHoleApiStatusEnum.error
-            : 'mixed',
-      instances,
-    }
+    return piHoleConnections.map((piHole) => ({
+      connector_type: ConnectorType.piHole,
+      pi_uri_base: normalizePiHoleAddress(piHole.pi_uri_base!),
+      api_key: piHole.api_key,
+    }))
   }
 
   public static async getPiHoleStatusCombined(): Promise<PiHoleApiStatusEnum> {
     try {
-      const summary = await this.getPiHoleStatusSummary()
-      return summary.status === 'mixed'
-        ? PiHoleApiStatusEnum.unknown
-        : summary.status
+      const results = await this.getPiHoleStatus()
+      return combinePiHoleStatuses(
+        results.map((result) => result.data.blocking),
+      )
     } catch (reason) {
       console.warn(reason)
       return PiHoleApiStatusEnum.error
@@ -106,12 +99,13 @@ export default class PiHoleApiService {
     AxiosResponse<PiHoleApiStatus>[]
   > {
     const piHoleSettingsArray = await this.getConfiguredPiHoles()
+
     return Promise.all(
       piHoleSettingsArray.map((piHole) =>
         this.getAxiosInstance(
           piHole.pi_uri_base!,
           piHole.api_key,
-        ).get<PiHoleApiStatus>('/dns/blocking'),
+        ).get<PiHoleApiStatus>('dns/blocking'),
       ),
     )
   }
@@ -123,7 +117,7 @@ export default class PiHoleApiService {
     const response = await this.getAxiosInstance(
       piHole.pi_uri_base!,
       piHole.api_key,
-    ).get<PiHoleApiStatus>('/dns/blocking')
+    ).get<PiHoleApiStatus>('dns/blocking')
     return response.data
   }
 
@@ -131,17 +125,18 @@ export default class PiHoleApiService {
     piHole: PiHoleSettingsStorage,
   ): Promise<AxiosResponse<PiHoleVersionsV6>> {
     this.assertValidPiHole(piHole)
+
     return this.getAxiosInstance(
       piHole.pi_uri_base!,
       piHole.api_key,
-    ).get<PiHoleVersionsV6>('/info/version')
+    ).get<PiHoleVersionsV6>('info/version')
   }
 
   public static async changePiHoleStatus(
     mode: PiHoleApiStatusEnum,
     time: number,
   ): Promise<AxiosResponse<PiHoleApiStatus>[]> {
-    const piHoles = await this.getConfiguredPiHoles()
+    const piHoleSettingsArray = await this.getConfiguredPiHoles()
 
     if (time < 0) {
       return Promise.reject(`Disable time smaller than allowed:${time}`)
@@ -156,41 +151,79 @@ export default class PiHoleApiService {
       return Promise.reject(`Mode ${mode} not allowed for this function.`)
     }
 
-    return MultiInstanceTransactionService.run(
-      `global-blocking:${blocking ? 'enable' : 'disable'}`,
-      piHoles.map((piHole) => ({
-        id: getPiHoleEndpointKey(piHole.pi_uri_base!),
-        preflight: async () => {
-          const status = await this.getPiHoleStatusFor(piHole)
-          if (
-            status.blocking !== PiHoleApiStatusEnum.enabled &&
-            status.blocking !== PiHoleApiStatusEnum.disabled
-          ) {
-            throw new Error(
-              `Unable to determine blocking state for ${piHole.pi_uri_base}`,
-            )
-          }
-          return status
-        },
-        apply: () =>
-          this.getAxiosInstance(
-            piHole.pi_uri_base!,
-            piHole.api_key,
-          ).post<PiHoleApiStatus>('/dns/blocking', {
+    const targets = this.toTargets(piHoleSettingsArray)
+    return OperationCoordinator.runExclusive('global:blocking', () =>
+      runMultiInstanceTransaction(
+        targets,
+        (piHole) => this.getPiHoleStatusFor(piHole),
+        (piHole) =>
+          this.setPiHoleStatusFor(
+            piHole,
             blocking,
-            timer: time === 0 || blocking ? null : time,
-          }),
-        rollback: async (snapshot) => {
-          await this.getAxiosInstance(
-            piHole.pi_uri_base!,
-            piHole.api_key,
-          ).post<PiHoleApiStatus>('/dns/blocking', {
-            blocking: snapshot.blocking === PiHoleApiStatusEnum.enabled,
-            timer: null,
-          })
+            time === 0 || blocking ? null : time,
+          ),
+        async (piHole, original) => {
+          await this.setPiHoleStatusFor(
+            piHole,
+            original.blocking === PiHoleApiStatusEnum.enabled,
+            original.blocking === PiHoleApiStatusEnum.disabled
+              ? (original.timer ?? null)
+              : null,
+          )
         },
-      })),
+      ),
     )
+  }
+
+  public static async setDomainListGlobally(
+    list: ApiList,
+    domain: string,
+  ): Promise<void> {
+    if (!domain) {
+      throw new Error("Domain can't be empty")
+    }
+
+    const opposite =
+      list === ApiList.whitelist ? ApiList.blacklist : ApiList.whitelist
+    const piHoles = await this.getConfiguredPiHoles()
+
+    await OperationCoordinator.runExclusive(`domain:${domain}`, async () => {
+      await runMultiInstanceTransaction(
+        this.toTargets(piHoles),
+        async (piHole): Promise<DomainListSnapshot> => {
+          const [groups, target, oppositeDomain] = await Promise.all([
+            this.getGroups(piHole),
+            this.getExactDomain(piHole, list, domain),
+            this.getExactDomain(piHole, opposite, domain),
+          ])
+          if (groups.length === 0) {
+            throw new Error('Pi-hole did not return any client groups')
+          }
+          return {
+            target: target ? this.cloneDomain(target) : null,
+            opposite: oppositeDomain ? this.cloneDomain(oppositeDomain) : null,
+            groupIds: groups.map((group) => group.id),
+          }
+        },
+        async (piHole, snapshot) => {
+          await this.upsertExactDomain(piHole, list, domain, {
+            comment: snapshot.target?.comment ?? 'From Wormhole Connector',
+            groups: snapshot.groupIds,
+            enabled: true,
+          })
+          await this.deleteExactDomainIfPresent(piHole, opposite, domain)
+        },
+        async (piHole, snapshot) => {
+          await this.restoreExactDomain(piHole, list, domain, snapshot.target)
+          await this.restoreExactDomain(
+            piHole,
+            opposite,
+            domain,
+            snapshot.opposite,
+          )
+        },
+      )
+    })
   }
 
   public static async addDomainToList(
@@ -284,7 +317,7 @@ export default class PiHoleApiService {
       piHole.pi_uri_base!,
       piHole.api_key,
     ).get<PiHoleSearchResponse>(
-      `/search/${encodeURIComponent(domain)}?partial=false&N=100`,
+      `search/${encodeURIComponent(domain)}?partial=false&N=100`,
     )
     return response.data
   }
@@ -296,7 +329,7 @@ export default class PiHoleApiService {
     const response = await this.getAxiosInstance(
       piHole.pi_uri_base!,
       piHole.api_key,
-    ).get<PiHoleGroups>('/groups')
+    ).get<PiHoleGroups>('groups')
     return response.data.groups
   }
 
@@ -330,7 +363,8 @@ export default class PiHoleApiService {
       const response = await this.getAxiosInstance(
         piHole.pi_uri_base!,
         piHole.api_key,
-      ).get<PiHoleGroups>(`/groups/${encodeURIComponent(name)}`)
+      ).get<PiHoleGroups>(`groups/${encodeURIComponent(name)}`)
+
       return response.data.groups[0]
     } catch (reason) {
       if (this.isNotFound(reason)) {
@@ -349,7 +383,7 @@ export default class PiHoleApiService {
     const response = await this.getAxiosInstance(
       piHole.pi_uri_base!,
       piHole.api_key,
-    ).put<PiHoleGroups>(`/groups/${encodeURIComponent(originalName)}`, group)
+    ).put<PiHoleGroups>(`groups/${encodeURIComponent(originalName)}`, group)
 
     const updatedGroup = response.data.groups[0]
     if (!updatedGroup) {
@@ -358,36 +392,37 @@ export default class PiHoleApiService {
     return updatedGroup
   }
 
-  public static async closeSession(
-    piHole: PiHoleSettingsStorage,
-  ): Promise<void> {
+  public static async endSession(piHole: PiHoleSettingsStorage): Promise<void> {
     if (!piHole.pi_uri_base) {
       return
     }
 
-    const session = await SessionService.get(piHole.pi_uri_base)
-    if (!session) {
-      return
-    }
-
-    try {
-      await this.createAxiosBaseInstance(piHole.pi_uri_base).delete('/auth', {
-        headers: { 'X-FTL-SID': session.sid },
-      })
-    } catch (reason) {
-      console.warn('Unable to close Pi-hole session cleanly', reason)
-    } finally {
-      await SessionService.remove(piHole.pi_uri_base)
-    }
+    await OperationCoordinator.runExclusive(
+      this.getSessionLockKey(piHole.pi_uri_base),
+      async () => {
+        const sid = await StorageService.getSid(piHole.pi_uri_base!)
+        try {
+          if (sid) {
+            await this.createAxiosBaseInstance(piHole.pi_uri_base!).delete(
+              'auth',
+              {
+                headers: { 'X-FTL-SID': sid },
+              },
+            )
+          }
+        } catch (reason) {
+          console.warn('Could not close a Pi-hole API session', reason)
+        } finally {
+          await StorageService.removeSid(piHole.pi_uri_base!)
+        }
+      },
+    )
   }
 
-  public static async closeAllSessions(
-    piHoles?: PiHoleSettingsStorage[],
+  public static async endSessions(
+    piHoles: PiHoleSettingsStorage[],
   ): Promise<void> {
-    const configured =
-      piHoles ?? (await StorageService.getPiHoleSettingsArray()) ?? []
-    await Promise.all(configured.map((piHole) => this.closeSession(piHole)))
-    await SessionService.clear()
+    await Promise.allSettled(piHoles.map((piHole) => this.endSession(piHole)))
   }
 
   private static async getDomain(
@@ -403,8 +438,9 @@ export default class PiHoleApiService {
         piHole.pi_uri_base!,
         piHole.api_key,
       ).get<PiHoleDomains>(
-        `/domains/${list}/${kind}/${encodeURIComponent(domain)}`,
+        `domains/${list}/${kind}/${encodeURIComponent(domain)}`,
       )
+
       return response.data.domains[0]
     } catch (reason) {
       if (this.isNotFound(reason)) {
@@ -425,10 +461,11 @@ export default class PiHoleApiService {
     const response = await this.getAxiosInstance(
       piHole.pi_uri_base!,
       piHole.api_key,
-    ).post<PiHoleDomains>(`/domains/${list}/${kind}`, {
+    ).post<PiHoleDomains>(`domains/${list}/${kind}`, {
       domain,
       ...payload,
     })
+
     return this.requireDomain(response.data, domain)
   }
 
@@ -444,13 +481,14 @@ export default class PiHoleApiService {
       piHole.pi_uri_base!,
       piHole.api_key,
     ).put<PiHoleDomains>(
-      `/domains/${list}/${kind}/${encodeURIComponent(domain)}`,
+      `domains/${list}/${kind}/${encodeURIComponent(domain)}`,
       {
         type: list,
         kind,
         ...payload,
       },
     )
+
     return this.requireDomain(response.data, domain)
   }
 
@@ -462,7 +500,7 @@ export default class PiHoleApiService {
   ): Promise<void> {
     this.assertValidPiHole(piHole)
     await this.getAxiosInstance(piHole.pi_uri_base!, piHole.api_key).delete(
-      `/domains/${list}/${kind}/${encodeURIComponent(domain)}`,
+      `domains/${list}/${kind}/${encodeURIComponent(domain)}`,
     )
   }
 
@@ -471,93 +509,122 @@ export default class PiHoleApiService {
     mode: ApiListMode,
     domain: string,
   ): Promise<void> {
-    const piHoles = await this.getConfiguredPiHoles()
+    const piHoleSettingsArray = await this.getConfiguredPiHoles()
+
     if (domain.length < 1) {
       return Promise.reject("Domain can't be empty")
     }
 
-    await MultiInstanceTransactionService.run<DomainListSnapshot, void>(
-      `domain-list:${list}:${mode}:${domain}`,
-      piHoles.map((piHole) => ({
-        id: getPiHoleEndpointKey(piHole.pi_uri_base!),
-        preflight: async () => {
+    await OperationCoordinator.runExclusive(`domain:${domain}`, async () => {
+      await runMultiInstanceTransaction(
+        this.toTargets(piHoleSettingsArray),
+        async (piHole) => {
           const [current, groups] = await Promise.all([
             this.getExactDomain(piHole, list, domain),
             mode === ApiListMode.add
               ? this.getGroups(piHole)
-              : Promise.resolve([] as PiHoleGroup[]),
+              : Promise.resolve([]),
           ])
-          const groupIds = groups.map((group) => group.id)
-          if (mode === ApiListMode.add && groupIds.length < 1) {
+          if (mode === ApiListMode.add && groups.length === 0) {
             throw new Error('Pi-hole did not return any client groups')
           }
-          return { current, groupIds }
+          return {
+            current: current ? this.cloneDomain(current) : null,
+            groupIds: groups.map((group) => group.id),
+          }
         },
-        apply: async ({ current, groupIds }) => {
+        async (piHole, snapshot) => {
           if (mode === ApiListMode.add) {
-            if (!current) {
-              await this.addExactDomain(piHole, list, domain, {
-                comment: 'From Wormhole Connector',
-                groups: groupIds,
-                enabled: true,
-              })
-              return
-            }
-
-            const hasExactlyAllGroups =
-              current.groups.length === groupIds.length &&
-              groupIds.every((groupId) => current.groups.includes(groupId))
-            if (!current.enabled || !hasExactlyAllGroups) {
-              await this.replaceExactDomain(piHole, list, domain, {
-                comment: current.comment,
-                groups: groupIds,
-                enabled: true,
-              })
-            }
+            await this.upsertExactDomain(piHole, list, domain, {
+              comment: snapshot.current?.comment ?? 'From Wormhole Connector',
+              groups: snapshot.groupIds,
+              enabled: true,
+            })
             return
           }
-
-          if (current) {
-            await this.deleteExactDomain(piHole, list, domain)
-          }
+          await this.deleteExactDomainIfPresent(piHole, list, domain)
         },
-        rollback: (snapshot) =>
-          this.restoreExactDomainSnapshot(piHole, list, domain, snapshot.current),
-      })),
-    )
+        (piHole, snapshot) =>
+          this.restoreExactDomain(piHole, list, domain, snapshot.current),
+      )
+    })
   }
 
-  private static async restoreExactDomainSnapshot(
+  public static async setPiHoleStatusFor(
+    piHole: PiHoleSettingsStorage,
+    blocking: boolean,
+    timer: number | null,
+  ): Promise<AxiosResponse<PiHoleApiStatus>> {
+    return this.getAxiosInstance(
+      piHole.pi_uri_base!,
+      piHole.api_key,
+    ).post<PiHoleApiStatus>('dns/blocking', { blocking, timer })
+  }
+
+  private static async upsertExactDomain(
     piHole: PiHoleSettingsStorage,
     list: ApiList,
     domain: string,
-    snapshot?: PiHoleDomain,
-  ): Promise<void> {
+    payload: DomainMutationPayload,
+  ): Promise<PiHoleDomain> {
     const current = await this.getExactDomain(piHole, list, domain)
-    if (!snapshot) {
-      if (current) {
-        await this.deleteExactDomain(piHole, list, domain)
+    return current
+      ? this.replaceExactDomain(piHole, list, domain, payload)
+      : this.addExactDomain(piHole, list, domain, payload)
+  }
+
+  private static async deleteExactDomainIfPresent(
+    piHole: PiHoleSettingsStorage,
+    list: ApiList,
+    domain: string,
+  ): Promise<void> {
+    try {
+      await this.deleteExactDomain(piHole, list, domain)
+    } catch (reason) {
+      if (!this.isNotFound(reason)) {
+        throw reason
       }
+    }
+  }
+
+  private static async restoreExactDomain(
+    piHole: PiHoleSettingsStorage,
+    list: ApiList,
+    domain: string,
+    original: PiHoleDomain | null,
+  ): Promise<void> {
+    if (!original) {
+      await this.deleteExactDomainIfPresent(piHole, list, domain)
       return
     }
 
-    const payload: DomainMutationPayload = {
-      comment: snapshot.comment,
-      groups: snapshot.groups,
-      enabled: snapshot.enabled,
-    }
-    if (current) {
-      await this.replaceExactDomain(piHole, list, domain, payload)
-    } else {
-      await this.addExactDomain(piHole, list, domain, payload)
-    }
+    await this.upsertExactDomain(piHole, list, domain, {
+      comment: original.comment,
+      groups: [...original.groups],
+      enabled: original.enabled,
+    })
+  }
+
+  private static cloneDomain(domain: PiHoleDomain): PiHoleDomain {
+    return { ...domain, groups: [...domain.groups] }
+  }
+
+  private static toTargets(
+    piHoles: PiHoleSettingsStorage[],
+  ): MultiInstanceTarget<PiHoleSettingsStorage>[] {
+    return piHoles.map((piHole) => ({
+      address: piHole.pi_uri_base!,
+      value: piHole,
+    }))
   }
 
   private static requireDomain(
     response: PiHoleDomains,
     domain: string,
   ): PiHoleDomain {
-    const updatedDomain = response.domains.find((item) => item.domain === domain)
+    const updatedDomain = response.domains.find(
+      (item) => item.domain === domain,
+    )
     if (!updatedDomain) {
       throw new Error(`Pi-hole did not return updated domain ${domain}`)
     }
@@ -565,7 +632,11 @@ export default class PiHoleApiService {
   }
 
   private static assertValidPiHole(piHole: PiHoleSettingsStorage): void {
-    if (!piHole.pi_uri_base || typeof piHole.api_key === 'undefined') {
+    if (
+      getConnectorType(piHole) !== ConnectorType.piHole ||
+      !piHole.pi_uri_base ||
+      typeof piHole.api_key === 'undefined'
+    ) {
       throw new Error('Some PiHoleSettings are undefined.')
     }
   }
@@ -573,18 +644,43 @@ export default class PiHoleApiService {
   private static isNotFound(reason: unknown): boolean {
     return Boolean(
       reason &&
-        typeof reason === 'object' &&
-        'response' in reason &&
-        (reason as { response?: { status?: number } }).response?.status === 404,
+      typeof reason === 'object' &&
+      'response' in reason &&
+      (reason as { response?: { status?: number } }).response?.status === 404,
     )
   }
 
   private static createAxiosBaseInstance(domain: string): AxiosInstance {
     return axios.create({
-      baseURL: getPiHoleApiBaseUrl(domain),
+      baseURL: getPiHoleApiBase(domain),
       adapter: 'fetch',
       withCredentials: false,
     })
+  }
+
+  private static acquireSession(
+    domain: string,
+    apiKey: string,
+  ): Promise<PiHoleAuth['session']> {
+    const key = getPiHoleApiBase(domain)
+    const pending = this.authenticationRequests.get(key)
+    if (pending) {
+      return pending
+    }
+
+    const request = this.createAxiosBaseInstance(domain)
+      .post<PiHoleAuth>('auth', { password: apiKey })
+      .then((response) => {
+        if (!response.data.session.valid || !response.data.session.sid) {
+          throw new Error('Pi-hole authentication did not return a valid SID')
+        }
+        return response.data.session
+      })
+      .finally(() => {
+        this.authenticationRequests.delete(key)
+      })
+    this.authenticationRequests.set(key, request)
+    return request
   }
 
   private static getAxiosInstance(
@@ -593,51 +689,86 @@ export default class PiHoleApiService {
   ): AxiosInstance {
     const instance = this.createAxiosBaseInstance(domain)
 
-    const acquireSid = async (force = false) =>
-      SessionService.acquire(
-        domain,
-        async () => {
-          const auth = await this.createAxiosBaseInstance(domain).post<PiHoleAuth>(
-            '/auth',
-            { password: apiKey },
-          )
-          return auth.data.session.sid
-        },
-        force,
-      )
-
     instance.interceptors.request.use(async (config) => {
-      if (!apiKey || config.url === '/auth') {
+      if (!apiKey) {
         return config
       }
 
-      const session = await acquireSid()
-      config.headers['X-FTL-SID'] = session.sid
+      config.headers['X-FTL-SID'] = await this.getOrCreateSid(domain, apiKey)
       return config
     })
 
     instance.interceptors.response.use(undefined, async (error) => {
       const requestConfig = error.config as typeof error.config & {
-        wormholeAuthRetried?: boolean
+        piholeAuthRetried?: boolean
       }
-      const isAuthRoute = requestConfig?.url === '/auth'
+      const isAuthRoute = requestConfig?.url === 'auth'
       const isUnauthorized = error.response?.status === 401
 
       if (
         isUnauthorized &&
         !isAuthRoute &&
+        apiKey &&
         requestConfig &&
-        !requestConfig.wormholeAuthRetried
+        !requestConfig.piholeAuthRetried
       ) {
-        requestConfig.wormholeAuthRetried = true
-        console.warn('Session expired, acquiring a new Pi-hole session')
-        const session = await acquireSid(true)
-        requestConfig.headers['X-FTL-SID'] = session.sid
+        requestConfig.piholeAuthRetried = true
+        console.warn('Session expired, acquiring new session')
+        const failedSid = String(requestConfig.headers?.['X-FTL-SID'] ?? '')
+        requestConfig.headers['X-FTL-SID'] = await this.refreshSid(
+          domain,
+          apiKey,
+          failedSid || undefined,
+        )
         return instance.request(requestConfig)
       }
       return Promise.reject(error)
     })
 
     return instance
+  }
+
+  private static getOrCreateSid(
+    domain: string,
+    apiKey: string,
+  ): Promise<string> {
+    return OperationCoordinator.runExclusive(
+      this.getSessionLockKey(domain),
+      async () => {
+        const existing = await StorageService.getSid(domain)
+        if (existing) {
+          return existing
+        }
+
+        const session = await this.acquireSession(domain, apiKey)
+        await StorageService.saveSid(domain, session.sid)
+        return session.sid
+      },
+    )
+  }
+
+  private static refreshSid(
+    domain: string,
+    apiKey: string,
+    failedSid?: string,
+  ): Promise<string> {
+    return OperationCoordinator.runExclusive(
+      this.getSessionLockKey(domain),
+      async () => {
+        const current = await StorageService.getSid(domain)
+        if (failedSid && current && current !== failedSid) {
+          return current
+        }
+
+        await StorageService.removeSid(domain)
+        const session = await this.acquireSession(domain, apiKey)
+        await StorageService.saveSid(domain, session.sid)
+        return session.sid
+      },
+    )
+  }
+
+  private static getSessionLockKey(domain: string): string {
+    return `pihole-session:${getPiHoleApiBase(domain)}`
   }
 }

@@ -2,15 +2,16 @@ import ApiList from '../api/enum/ApiList'
 import { PiHoleDomain } from '../api/models/PiHoleDomains'
 import { PiHoleGroup } from '../api/models/PiHoleGroups'
 import PiHoleApiService from './PiHoleApiService'
+import OperationCoordinator from './OperationCoordinator'
 import { PiHoleSettingsStorage } from './StorageService'
 
 const STORAGE_KEY = 'temporary_actions_v1'
 const DOMAIN_ALARM_PREFIX = 'pihole.temporaryAllow.'
 const GROUP_ALARM_PREFIX = 'pihole.temporaryGroup.'
 const RESTORE_RETRY_DELAY = 60 * 1000
-const TEMPORARY_ALLOW_COMMENT = 'Temporary allow by PiHole Browser Extension'
+const TEMPORARY_ALLOW_COMMENT = 'Temporary allow by Wormhole Connector'
 const TEMPORARY_GROUP_ALLOW_COMMENT =
-  'Temporary group allow by PiHole Browser Extension'
+  'Temporary group allow by Wormhole Connector'
 
 type TemporaryDomainTarget = {
   pi_uri_base: string
@@ -45,6 +46,12 @@ type TemporaryActionsStorage = {
 
 export default class TemporaryActionService {
   public static async initialize(): Promise<void> {
+    await OperationCoordinator.runExclusive(STORAGE_KEY, () =>
+      this.initializeUnlocked(),
+    )
+  }
+
+  private static async initializeUnlocked(): Promise<void> {
     const storage = await this.getStorage()
     const now = Date.now()
 
@@ -66,6 +73,14 @@ export default class TemporaryActionService {
   }
 
   public static async handleAlarm(alarmName: string): Promise<boolean> {
+    return OperationCoordinator.runExclusive(STORAGE_KEY, () =>
+      this.handleAlarmUnlocked(alarmName),
+    )
+  }
+
+  private static async handleAlarmUnlocked(
+    alarmName: string,
+  ): Promise<boolean> {
     if (alarmName.startsWith(DOMAIN_ALARM_PREFIX)) {
       await this.restoreDomainAction(
         alarmName.slice(DOMAIN_ALARM_PREFIX.length),
@@ -82,6 +97,15 @@ export default class TemporaryActionService {
   }
 
   public static async temporarilyAllowDomain(
+    domain: string,
+    durationSeconds: number,
+  ): Promise<boolean> {
+    return OperationCoordinator.runExclusive(STORAGE_KEY, () =>
+      this.temporarilyAllowDomainUnlocked(domain, durationSeconds),
+    )
+  }
+
+  private static async temporarilyAllowDomainUnlocked(
     domain: string,
     durationSeconds: number,
   ): Promise<boolean> {
@@ -117,13 +141,18 @@ export default class TemporaryActionService {
 
     try {
       const piHoles = await PiHoleApiService.getConfiguredPiHoles()
-      for (const piHole of piHoles) {
-        const current = await PiHoleApiService.getExactDomain(
+      const snapshots = await Promise.all(
+        piHoles.map(async (piHole) => ({
           piHole,
-          ApiList.whitelist,
-          domain,
-        )
+          current: await PiHoleApiService.getExactDomain(
+            piHole,
+            ApiList.whitelist,
+            domain,
+          ),
+        })),
+      )
 
+      for (const { piHole, current } of snapshots) {
         if (current?.enabled && current.groups.includes(0)) {
           continue
         }
@@ -192,6 +221,20 @@ export default class TemporaryActionService {
     groupName: string,
     durationSeconds: number,
   ): Promise<boolean> {
+    return OperationCoordinator.runExclusive(STORAGE_KEY, () =>
+      this.temporarilyAllowDomainForGroupUnlocked(
+        domain,
+        groupName,
+        durationSeconds,
+      ),
+    )
+  }
+
+  private static async temporarilyAllowDomainForGroupUnlocked(
+    domain: string,
+    groupName: string,
+    durationSeconds: number,
+  ): Promise<boolean> {
     this.assertDuration(durationSeconds)
     if (!domain) {
       throw new Error("Domain can't be empty")
@@ -230,17 +273,22 @@ export default class TemporaryActionService {
 
     try {
       const piHoles = await PiHoleApiService.getConfiguredPiHoles()
-      for (const piHole of piHoles) {
-        const group = await PiHoleApiService.getGroup(piHole, groupName)
+      const snapshots = await Promise.all(
+        piHoles.map(async (piHole) => ({
+          piHole,
+          group: await PiHoleApiService.getGroup(piHole, groupName),
+          current: await PiHoleApiService.getRegexDomain(
+            piHole,
+            ApiList.whitelist,
+            ruleDomain,
+          ),
+        })),
+      )
+
+      for (const { piHole, group, current } of snapshots) {
         if (!group) {
           throw new Error(`Group ${groupName} is missing on one Pi-hole`)
         }
-
-        const current = await PiHoleApiService.getRegexDomain(
-          piHole,
-          ApiList.whitelist,
-          ruleDomain,
-        )
         if (current && current.comment !== TEMPORARY_GROUP_ALLOW_COMMENT) {
           throw new Error(
             `The reserved temporary allow rule for ${groupName} already exists`,
@@ -306,6 +354,15 @@ export default class TemporaryActionService {
     groupName: string,
     durationSeconds: number,
   ): Promise<boolean> {
+    return OperationCoordinator.runExclusive(STORAGE_KEY, () =>
+      this.temporarilyDisableGroupUnlocked(groupName, durationSeconds),
+    )
+  }
+
+  private static async temporarilyDisableGroupUnlocked(
+    groupName: string,
+    durationSeconds: number,
+  ): Promise<boolean> {
     this.assertDuration(durationSeconds)
     if (!groupName) {
       throw new Error('Group name cannot be empty')
@@ -338,8 +395,14 @@ export default class TemporaryActionService {
 
     try {
       const piHoles = await PiHoleApiService.getConfiguredPiHoles()
-      for (const piHole of piHoles) {
-        const current = await PiHoleApiService.getGroup(piHole, groupName)
+      const snapshots = await Promise.all(
+        piHoles.map(async (piHole) => ({
+          piHole,
+          current: await PiHoleApiService.getGroup(piHole, groupName),
+        })),
+      )
+
+      for (const { piHole, current } of snapshots) {
         if (!current) {
           throw new Error(`Group ${groupName} is missing on one Pi-hole`)
         }
@@ -395,6 +458,14 @@ export default class TemporaryActionService {
   }
 
   public static async cancelTemporaryGroupAction(
+    groupName: string,
+  ): Promise<void> {
+    await OperationCoordinator.runExclusive(STORAGE_KEY, () =>
+      this.cancelTemporaryGroupActionUnlocked(groupName),
+    )
+  }
+
+  private static async cancelTemporaryGroupActionUnlocked(
     groupName: string,
   ): Promise<void> {
     const key = encodeURIComponent(groupName)

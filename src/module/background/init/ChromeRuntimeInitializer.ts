@@ -5,17 +5,17 @@ import {
   StorageService,
   TemporaryAllowTimeDefaults,
 } from '../../../service/StorageService'
-import StorageMigrationService from '../../../service/StorageMigrationService'
+import { compareVersions } from '../../../service/VersionService'
 
 export default class ChromeRuntimeInitializer implements Initializer {
   public init(): void {
-    this.initializeStorage().catch((reason) => {
-      console.error('Failed to initialize Wormhole Connector storage', reason)
+    this.initializeDefaults().catch((reason) => {
+      console.error('Failed to initialize extension defaults', reason)
     })
 
     chrome.runtime.onInstalled.addListener((details) => {
       this.handleInstalled(details).catch((reason) => {
-        console.error('Failed to handle extension installation or update', reason)
+        console.error('Failed to migrate extension settings', reason)
       })
     })
   }
@@ -23,47 +23,53 @@ export default class ChromeRuntimeInitializer implements Initializer {
   private async handleInstalled(
     details: chrome.runtime.InstalledDetails,
   ): Promise<void> {
-    await StorageMigrationService.run()
-    await this.initializePresetTimes()
+    await this.initializeDefaults()
 
-    if (details.reason === 'install') {
-      if (typeof (await StorageService.getDefaultDisableTime()) === 'undefined') {
-        StorageService.saveDefaultDisableTime(
-          Number(PiHoleSettingsDefaults.default_disable_time),
-        )
-      }
-      if (typeof (await StorageService.getReloadAfterDisable()) === 'undefined') {
-        StorageService.saveReloadAfterDisable(true)
-      }
-      if (typeof (await StorageService.getReloadAfterWhitelist()) === 'undefined') {
-        StorageService.saveReloadAfterWhitelist(true)
-      }
+    if (details.reason !== 'update' || !details.previousVersion) {
       return
     }
 
-    if (details.reason === 'update' && details.previousVersion) {
-      console.info(
-        `Wormhole Connector updated from ${details.previousVersion} to ${chrome.runtime.getManifest().version}`,
-      )
+    const currentVersion = chrome.runtime.getManifest().version
+    if (compareVersions(details.previousVersion, currentVersion) >= 0) {
+      return
     }
+
+    console.log(`Updated from ${details.previousVersion} to ${currentVersion}`)
+    // Authentication sessions are intentionally not migrated. User settings,
+    // including connection addresses and passwords, remain intact.
+    await StorageService.removeAllSids()
   }
 
-  private async initializeStorage(): Promise<void> {
-    await StorageMigrationService.run()
-    await this.initializePresetTimes()
-  }
+  private async initializeDefaults(): Promise<void> {
+    const [defaultTime, groupTimes, allowTimes, reloadDisable, reloadAllow] =
+      await Promise.all([
+        StorageService.getDefaultDisableTime(),
+        StorageService.getGroupPauseTimes(),
+        StorageService.getTemporaryAllowTimes(),
+        StorageService.getReloadAfterDisable(),
+        StorageService.getReloadAfterWhitelist(),
+      ])
 
-  private async initializePresetTimes(): Promise<void> {
-    const [groupPauseTimes, temporaryAllowTimes] = await Promise.all([
-      StorageService.getGroupPauseTimes(),
-      StorageService.getTemporaryAllowTimes(),
+    await Promise.all([
+      typeof defaultTime === 'undefined'
+        ? StorageService.saveDefaultDisableTime(
+            Number(PiHoleSettingsDefaults.default_disable_time),
+          )
+        : Promise.resolve(),
+      typeof groupTimes === 'undefined'
+        ? StorageService.saveGroupPauseTimes([...GroupPauseTimeDefaults])
+        : Promise.resolve(),
+      typeof allowTimes === 'undefined'
+        ? StorageService.saveTemporaryAllowTimes([
+            ...TemporaryAllowTimeDefaults,
+          ])
+        : Promise.resolve(),
+      typeof reloadDisable === 'undefined'
+        ? StorageService.saveReloadAfterDisable(true)
+        : Promise.resolve(),
+      typeof reloadAllow === 'undefined'
+        ? StorageService.saveReloadAfterWhitelist(true)
+        : Promise.resolve(),
     ])
-
-    if (typeof groupPauseTimes === 'undefined') {
-      StorageService.saveGroupPauseTimes([...GroupPauseTimeDefaults])
-    }
-    if (typeof temporaryAllowTimes === 'undefined') {
-      StorageService.saveTemporaryAllowTimes([...TemporaryAllowTimeDefaults])
-    }
   }
 }

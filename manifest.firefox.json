@@ -1,8 +1,8 @@
 {
 	"manifest_version": 2,
-	"name": "Wormhole Connector",
+	"name": "__MSG_extension_name__",
 	"version": "4.2.0",
-	"author": "Pascal Glaser, HyperCriSiS",
+	"author": "HyperCriSiS",
 	"description": "__MSG_manifest_description__",
 	"default_locale": "en",
 	"icons": {
@@ -28,13 +28,17 @@
 		"persistent": true,
 		"page": "background.html"
 	},
+	"content_security_policy": "script-src 'self'; object-src 'self'",
 	"browser_specific_settings": {
 		"gecko": {
-			"id": "pihole-browser-extension@hypercrisis.dev",
+			"id": "wormhole-connector@hypercrisis.dev",
 			"strict_min_version": "140.0",
 			"data_collection_permissions": {
 				"required": ["authenticationInfo", "browsingActivity"]
 			}
+		},
+		"gecko_android": {
+			"strict_min_version": "142.0"
 		}
 	},
 	"permissions": [

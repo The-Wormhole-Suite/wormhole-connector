@@ -55,6 +55,29 @@ async function validateBuild({
   const outputFiles = await listFiles(outputDirectory)
   const outputFileSet = new Set(outputFiles)
 
+  for (const requiredLegalFile of [
+    'LICENSE.txt',
+    'NOTICE.txt',
+    'CREDITS.txt',
+    'PRIVACY.txt',
+    'THIRD_PARTY_NOTICES.txt',
+  ]) {
+    assert(
+      outputFileSet.has(requiredLegalFile),
+      `${browser} package is missing ${requiredLegalFile}`,
+    )
+  }
+
+  const localeDirectories = outputFiles
+    .filter((fileName) => /^_locales\/[^/]+\/messages\.json$/.test(fileName))
+    .map((fileName) => fileName.split('/')[1])
+    .sort()
+  assertSameFiles(
+    ['de', 'en', 'es', 'fr', 'it', 'nl', 'pl', 'pt_BR'],
+    localeDirectories,
+    `${browser} locales`,
+  )
+
   for (const requiredPath of collectManifestPaths(builtManifest)) {
     assert(
       outputFileSet.has(requiredPath),

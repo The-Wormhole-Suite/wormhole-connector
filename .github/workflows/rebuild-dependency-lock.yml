@@ -31,8 +31,8 @@ jobs:
           cache: npm
           cache-dependency-path: package-lock.json
 
-      - name: Rebuild package lock
-        run: npm run rebuild-package-lock
+      - name: Apply safe runtime audit fixes
+        run: npm audit fix --package-lock-only --omit=dev --ignore-scripts --no-fund --audit-level=critical
 
       - name: Commit rebuilt lockfile
         shell: bash
@@ -44,7 +44,7 @@ jobs:
           if git diff --cached --quiet; then
             echo 'No package-lock.json changes to commit.'
           else
-            git commit -m 'Rebuild dependency lock'
+            git commit -m 'Apply safe runtime audit fixes'
             git push origin HEAD:dev
           fi
 

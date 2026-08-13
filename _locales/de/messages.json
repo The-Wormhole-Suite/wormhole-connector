@@ -1,305 +1,114 @@
 {
-  "manifest_description": {
-    "message": "Verbinde und steuere lokale Pi-hole-Instanzen direkt aus deinem Browser."
-  },
-  "options_title": {
-    "message": "$page$ – Wormhole Connector",
-    "placeholders": {
-      "page": {
-        "content": "$1"
-      }
-    }
-  },
-  "options_settings": {
-    "message": "Einstellungen"
-  },
-  "option_settings_general_settings": {
-    "message": "Allgemeine Einstellungen"
-  },
-  "options_about": {
-    "message": "Über"
-  },
-  "options_report_error": {
-    "message": "Problem melden"
-  },
-  "options_about_licences": {
-    "message": "Lizenzen"
-  },
-  "option_report_error_github": {
-    "message": "Problem auf GitHub erstellen"
-  },
-  "option_troubleshooting": {
-    "message": "Fehlerbehebung"
-  },
-  "option_extension": {
-    "message": "Erweiterung"
-  },
-  "option_about_copy_debug": {
-    "message": "Füge die folgenden Debug-Informationen in das Issue ein:"
-  },
-  "option_contributors": {
-    "message": "Mitwirkende:"
-  },
-  "option_donation": {
-    "message": "Spenden"
-  },
-  "options_headline_info": {
-    "message": "Pi-hole-Konfiguration"
-  },
-  "options_headline_additional_info": {
-    "message": "Gib die Pi-hole-Adresse und das Passwort der Weboberfläche ein und speichere die Verbindung anschließend ausdrücklich."
-  },
-  "options_default_time_label": {
-    "message": "Standard-Pausendauer:"
-  },
-  "options_default_time_unit": {
-    "message": "Sekunden"
-  },
-  "options_client_group_title": {
-    "message": "Client-Gruppe"
-  },
-  "options_default_client_group": {
-    "message": "Standard-Client-Gruppe"
-  },
-  "options_client_group_load_error": {
-    "message": "Client-Gruppen konnten nicht geladen werden. Speichere zuerst eine funktionierende Pi-hole-Verbindung."
-  },
-  "options_hide_group_selector_in_popup": {
-    "message": "Client-Gruppen-Auswahl im Popup ausblenden"
-  },
-  "options_hide_group_list_actions_in_popup": {
-    "message": "Gruppenbezogene Whitelist- und Blacklist-Aktionen im Popup ausblenden"
-  },
-  "options_badge_uses_selected_group": {
-    "message": "Blockierstatus im Toolbar-Badge anhand der ausgewählten Client-Gruppe bestimmen"
-  },
-  "options_group_pause_times_title": {
-    "message": "Zeitvorgaben für Gruppenpausen"
-  },
-  "options_group_pause_time_label": {
-    "message": "Gruppenpause"
-  },
-  "options_group_pause_time_hint": {
-    "message": "Wird für die drei orangefarbenen Client-Gruppen-Buttons verwendet. Mindestens 10 Sekunden"
-  },
-  "options_temporary_allow_times_title": {
-    "message": "Zeitvorgaben für temporäres Domain-Whitelisting"
-  },
-  "options_temporary_allow_time_label": {
-    "message": "Domain freigeben"
-  },
-  "options_temporary_allow_time_hint": {
-    "message": "Wird für die drei orangefarbenen Domain-Buttons der ausgewählten Client-Gruppe verwendet. Mindestens 10 Sekunden"
-  },
-  "options_reload_after_disable": {
-    "message": "Aktuellen Tab nach dem globalen oder gruppenbezogenen Ausschalten der Filterung neu laden"
-  },
-  "options_reload_after_white_list": {
-    "message": "Aktuellen Tab nach dem Freigeben einer Domain neu laden"
-  },
-  "options_api_key": {
-    "message": "Passwort"
-  },
-  "options_pi_hole_address": {
-    "message": "Pi-hole-Adresse"
-  },
-  "options_save_button": {
-    "message": "Speichern"
-  },
-  "options_save_success": {
-    "message": "Pi-hole-Verbindungseinstellungen wurden gespeichert."
-  },
-  "options_save_error": {
-    "message": "Pi-hole-Verbindungseinstellungen konnten nicht gespeichert werden."
-  },
-  "options_add_button": {
-    "message": "Pi-hole hinzufügen"
-  },
-  "options_remove_button": {
-    "message": "Pi-hole $num$ entfernen",
-    "placeholders": {
-      "num": {
-        "content": "$1"
-      }
-    }
-  },
-  "options_url_invalid_warning": {
-    "message": "Gib eine gültige HTTP- oder HTTPS-URL ein."
-  },
-  "options_disable_list_feature": {
-    "message": "Globale Whitelist- und Blacklist-Aktionen im Popup ausblenden"
-  },
-  "options_data_management_title": {
-    "message": "Sicherung, Import und Synchronisierung"
-  },
-  "options_data_management_info": {
-    "message": "Sicherungen enthalten standardmäßig keine Pi-hole-Passwörter. Importe werden vor dem Anwenden geprüft und als Vorschau angezeigt."
-  },
-  "options_backup_include_credentials": {
-    "message": "Pi-hole-Passwörter in die exportierte Datei aufnehmen"
-  },
-  "options_backup_export": {
-    "message": "Einstellungen exportieren"
-  },
-  "options_backup_import_select": {
-    "message": "Wormhole-Connector-Einstellungsdatei auswählen"
-  },
-  "options_backup_import_preview": {
-    "message": "Importvorschau: $connections$ Verbindung(en), $preferences$ Einstellung(en), Zugangsdaten enthalten: $credentials$",
-    "placeholders": {
-      "connections": {
-        "content": "$1"
-      },
-      "preferences": {
-        "content": "$2"
-      },
-      "credentials": {
-        "content": "$3"
-      }
-    }
-  },
-  "options_backup_import_apply": {
-    "message": "Import anwenden"
-  },
-  "options_backup_error": {
-    "message": "Die Einstellungsdatei konnte nicht verarbeitet werden."
-  },
-  "options_backup_success": {
-    "message": "Der Einstellungsvorgang wurde erfolgreich abgeschlossen."
-  },
-  "options_safe_sync": {
-    "message": "Sichere Einstellungen über das Browserkonto synchronisieren"
-  },
-  "options_safe_sync_hint": {
-    "message": "Nur nach ausdrücklicher Aktivierung. Pi-hole-Passwörter und Sitzungs-IDs werden niemals synchronisiert."
-  },
-  "options_yes": {
-    "message": "ja"
-  },
-  "options_no": {
-    "message": "nein"
-  },
-  "popup_status_card_title": {
-    "message": "Wormhole Connector"
-  },
-  "popup_status_card_info_text": {
-    "message": "Pausendauer"
-  },
-  "popup_global_title": {
-    "message": "Pi-hole global"
-  },
-  "popup_global_blocking_active": {
-    "message": "Pi-hole-Filterung global eingeschaltet"
-  },
-  "popup_global_success": {
-    "message": "Der globale Pi-hole-Filterstatus wurde geändert."
-  },
-  "popup_global_error": {
-    "message": "Der globale Pi-hole-Filterstatus konnte nicht geändert werden. Bereits geänderte Instanzen wurden soweit möglich wiederhergestellt."
-  },
-  "popup_blocking_active": {
-    "message": "Filterung aktiv"
-  },
-  "popup_entire_pihole": {
-    "message": "Gesamter Pi-hole"
-  },
-  "popup_second_card_current_url": {
-    "message": "Aktuelle Domain"
-  },
-  "popup_second_card_whitelist": {
-    "message": "Whitelist"
-  },
-  "popup_second_card_blacklist": {
-    "message": "Blacklist"
-  },
-  "popup_temporary_whitelist": {
-    "message": "Temporäres Whitelisting für diese Gruppe"
-  },
-  "popup_temporary_allow_duration": {
-    "message": "Dauer der temporären Domain-Freigabe"
-  },
-  "popup_group_title": {
-    "message": "Client-Gruppen-Aktionen"
-  },
-  "popup_group_select": {
-    "message": "Client-Gruppe auswählen"
-  },
-  "popup_group_blocking_active": {
-    "message": "Filterung für diese Gruppe eingeschaltet"
-  },
-  "popup_group_pause_times_title": {
-    "message": "Gruppe ausschalten für"
-  },
-  "popup_group_disable": {
-    "message": "Gruppe ausschalten"
-  },
-  "popup_group_warning": {
-    "message": "Die ausgewählte Client-Gruppe wird vollständig deaktiviert und nach Ablauf der Zeit automatisch wieder aktiviert."
-  },
-  "popup_group_success": {
-    "message": "Der Status der Client-Gruppe wurde geändert."
-  },
-  "popup_group_error": {
-    "message": "Die ausgewählte Client-Gruppe konnte nicht geändert werden."
-  },
-  "option_hotkey_settings": {
-    "message": "Tastenkürzel-Einstellungen"
-  },
-  "option_disable_context_menu": {
-    "message": "Kontextmenü-Kurzbefehle deaktivieren"
-  },
-  "popup_update_card_info": {
-    "message": "Pi-hole-Update verfügbar"
-  },
-  "context_menu_toggle_pi_holes": {
-    "message": "Pi-hole-Instanzen umschalten"
-  },
-  "context_menu_blacklist_current_domain": {
-    "message": "Aktuelle Domain auf die Blacklist setzen"
-  },
-  "context_menu_whitelist_current_domain": {
-    "message": "Aktuelle Domain auf die Whitelist setzen"
-  },
-  "context_menu_open_settings": {
-    "message": "Einstellungen öffnen"
-  },
-  "option_connection_check_idle": {
-    "message": "Verbindung wird geprüft"
-  },
-  "option_connection_check_ok": {
-    "message": "Verbindung erfolgreich"
-  },
-  "option_connection_check_error": {
-    "message": "Verbindung fehlgeschlagen"
-  },
-  "option_connection_check_update_available": {
-    "message": "Pi-hole-Update verfügbar"
-  },
-  "option_multiple_connections": {
-    "message": "Änderungen an mehreren Pi-hole-Instanzen werden vorab geprüft und bei einem Fehler soweit möglich zurückgerollt."
-  },
-  "popup_domain_general_actions": {
-    "message": "Dauerhafte Regel für alle Client-Gruppen"
-  },
-  "popup_temporary_whitelist_group": {
-    "message": "Ausgewählte Client-Gruppe"
-  },
-  "popup_group_manual": {
-    "message": "Gruppenfilterung aktiv"
-  },
-  "popup_domain_status_checking": {
-    "message": "Prüfe…"
-  },
-  "popup_domain_status_blocked": {
-    "message": "Blockiert"
-  },
-  "popup_domain_status_allowed": {
-    "message": "Nicht blockiert"
-  },
-  "popup_domain_status_unknown": {
-    "message": "Status unbekannt oder zwischen Instanzen unterschiedlich"
-  },
-  "popup_domain_action_error": {
-    "message": "Die Domain-Aktion ist fehlgeschlagen. Bereits geänderte Instanzen wurden soweit möglich wiederhergestellt."
-  }
+  "extension_name": {"message": "Wormhole Connector"},
+  "manifest_description": {"message": "Steuere Pi-hole v6 und AdGuard Home, Domainregeln, Geltungsbereiche und temporäre Aktionen direkt im Browser."},
+  "options_title": {"message": "$page$ - Wormhole Connector", "placeholders": {"page": {"content": "$1"}}},
+  "options_settings": {"message": "Einstellungen"},
+  "option_settings_general_settings": {"message": "Allgemeine Einstellungen"},
+  "options_about": {"message": "Über"},
+  "options_report_error": {"message": "Fehler melden"},
+  "options_about_licences": {"message": "Lizenzen"},
+  "option_report_error_github": {"message": "Problem auf GitHub erstellen"},
+  "option_troubleshooting": {"message": "Fehlerbehandlung"},
+  "option_extension": {"message": "Erweiterung"},
+  "option_about_copy_debug": {"message": "Bitte füge die folgenden Debug-Informationen deinem Problem hinzu:"},
+  "option_debug_operating_system": {"message": "Betriebssystem"},
+  "option_debug_browser": {"message": "Browser"},
+  "option_debug_browser_unknown": {"message": "Sonstiger/Unbekannt"},
+  "option_contributors": {"message": "Beitragende:"},
+  "options_headline_info": {"message": "DNS-Connector-Konfiguration"},
+  "options_headline_additional_info": {"message": "Wähle Pi-hole oder AdGuard Home, gib Adresse und Zugangsdaten ein und speichere den Connector anschließend ausdrücklich."},
+  "options_default_time_label": {"message": "Standard-Pausendauer:"},
+  "options_default_time_unit": {"message": "Sekunden"},
+  "options_client_group_title": {"message": "Geltungsbereich"},
+  "options_default_client_group": {"message": "Standard-Geltungsbereich"},
+  "options_client_group_load_error": {"message": "Gemeinsame Geltungsbereiche konnten nicht geladen werden. Speichere zuerst funktionierende DNS-Connectoren."},
+  "options_hide_group_selector_in_popup": {"message": "Auswahl des Geltungsbereichs im Popup ausblenden"},
+  "options_hide_group_list_actions_in_popup": {"message": "Geltungsbereichsbezogene Erlauben- und Blockieren-Aktionen ausblenden"},
+  "options_badge_uses_selected_group": {"message": "Toolbar-Anzeige anhand des ausgewählten Geltungsbereichs bestimmen"},
+  "options_group_pause_times_title": {"message": "Zeitvorgaben für Geltungsbereichspausen"},
+  "options_group_pause_time_label": {"message": "Bereichspause"},
+  "options_group_pause_time_hint": {"message": "Wird für die drei orangefarbenen Bereichs-Buttons verwendet. Mindestens 10 Sekunden"},
+  "options_temporary_allow_times_title": {"message": "Zeitvorgaben für temporäres Domain-Whitelisting"},
+  "options_temporary_allow_time_label": {"message": "Domain-Whitelist"},
+  "options_temporary_allow_time_hint": {"message": "Wird für die drei orangefarbenen Domain-Buttons des ausgewählten Geltungsbereichs verwendet. Mindestens 10 Sekunden"},
+  "options_reload_after_disable": {"message": "Aktuellen Tab nach dem globalen oder bereichsbezogenen Ausschalten der Filterung neu laden"},
+  "options_reload_after_white_list": {"message": "Aktuellen Tab nach dem Whitelisting einer Domain neu laden"},
+  "options_api_key": {"message": "Passwort"},
+  "options_pi_hole_address": {"message": "Pi-hole-Adresse"},
+  "options_connector_type": {"message": "DNS-Backend"},
+  "options_connector_address": {"message": "Connector-Adresse"},
+  "options_username": {"message": "Benutzername"},
+  "options_password": {"message": "Passwort oder Anwendungspasswort"},
+  "options_save_button": {"message": "Speichern"},
+  "options_save_success": {"message": "DNS-Connector-Einstellungen wurden gespeichert."},
+  "options_save_error": {"message": "DNS-Connector-Einstellungen konnten nicht gespeichert werden."},
+  "options_add_button": {"message": "Connector hinzufügen"},
+  "options_remove_button": {"message": "Connector $num$ löschen", "placeholders": {"num": {"content": "$1"}}},
+  "options_url_invalid_warning": {"message": "Die URL ist ungültig. (Fehlendes http(s), ungültiges Format oder leer)"},
+  "options_disable_list_feature": {"message": "Globale Whitelist- und Blacklist-Aktionen im Popup ausblenden"},
+  "popup_status_card_title": {"message": "Wormhole Connector"},
+  "popup_status_card_info_text": {"message": "Pausendauer"},
+  "popup_global_title": {"message": "Globaler DNS-Schutz"},
+  "popup_global_blocking_active": {"message": "DNS-Schutz global eingeschaltet"},
+  "popup_global_success": {"message": "Der globale DNS-Schutzstatus wurde geändert."},
+  "popup_global_error": {"message": "Der globale DNS-Schutzstatus konnte nicht geändert werden."},
+  "popup_global_mixed": {"message": "Die eingerichteten DNS-Connectoren haben derzeit unterschiedliche Schutzzustände."},
+  "popup_blocking_active": {"message": "Filterung aktiv"},
+  "popup_entire_pihole": {"message": "Gesamter Pi-hole"},
+  "popup_second_card_current_url": {"message": "Aktuelle Domain"},
+  "popup_default_group_scope": {"message": "Status für den Standard-Geltungsbereich"},
+  "popup_second_card_whitelist": {"message": "Whitelist"},
+  "popup_second_card_blacklist": {"message": "Blacklist"},
+  "popup_temporary_whitelist": {"message": "Für diesen Bereich temporär erlauben"},
+  "popup_temporary_allow_duration": {"message": "Dauer des temporären Domain-Whitelistings"},
+  "popup_group_title": {"message": "Aktionen für Geltungsbereiche"},
+  "popup_group_select": {"message": "Geltungsbereich auswählen"},
+  "popup_group_blocking_active": {"message": "Filterung für diesen Bereich eingeschaltet"},
+  "popup_group_pause_times_title": {"message": "Bereich pausieren für"},
+  "popup_group_disable": {"message": "Bereich pausieren"},
+  "popup_group_warning": {"message": "Der ausgewählte Geltungsbereich wird pausiert und nach Ablauf der Zeit automatisch wiederhergestellt."},
+  "popup_group_success": {"message": "Der Status des Geltungsbereichs wurde geändert."},
+  "popup_group_error": {"message": "Der ausgewählte Geltungsbereich konnte nicht geändert werden."},
+  "popup_group_mixed": {"message": "Dieser Bereich hat auf den eingerichteten DNS-Connectoren derzeit unterschiedliche Zustände."},
+  "option_hotkey_settings": {"message": "Hotkey-Einstellungen"},
+  "option_disable_context_menu": {"message": "Kontextmenü-Kurzbefehle deaktivieren"},
+  "popup_update_card_info": {"message": "Update für Pi-hole verfügbar"},
+  "context_menu_toggle_pi_holes": {"message": "DNS-Schutz umschalten"},
+  "context_menu_blacklist_current_domain": {"message": "Aktuelle Domain auf die Blacklist setzen"},
+  "context_menu_whitelist_current_domain": {"message": "Aktuelle Domain auf die Whitelist setzen"},
+  "context_menu_open_settings": {"message": "Einstellungen öffnen"},
+  "option_connection_check_idle": {"message": "Verbindung wird geprüft"},
+  "option_connection_check_ok": {"message": "Verbindung erfolgreich hergestellt"},
+  "option_connection_check_error": {"message": "Verbindung fehlgeschlagen"},
+  "option_connection_check_update_available": {"message": "Update für Pi-hole verfügbar"},
+  "option_multiple_connections": {"message": "Aktionen werden auf allen eingerichteten DNS-Connectoren vorab geprüft. Teilfehler werden soweit möglich zurückgerollt und pro Connector gemeldet."},
+  "popup_domain_general_actions": {"message": "Dauerhafte Regel für alle Standardbereiche"},
+  "popup_temporary_whitelist_group": {"message": "Ausgewählter Geltungsbereich"},
+  "popup_group_manual": {"message": "Bereichsfilterung aktiv"},
+  "popup_domain_status_checking": {"message": "Prüfe…"},
+  "popup_domain_status_blocked": {"message": "Blockiert"},
+  "popup_domain_status_allowed": {"message": "Nicht blockiert"},
+  "popup_domain_status_unknown": {"message": "Status unbekannt"},
+  "popup_domain_action_error": {"message": "Die Domain-Aktion ist fehlgeschlagen."},
+  "options_backup_sync_title": {"message": "Sicherung und Browser-Sync"},
+  "options_backup_secrets_excluded": {"message": "Benutzernamen, Passwörter, Anwendungspasswörter, Sitzungskennungen und laufende temporäre Aktionen werden niemals exportiert oder synchronisiert."},
+  "options_backup_export": {"message": "Einstellungen exportieren"},
+  "options_backup_import": {"message": "Sicherungsdatei auswählen"},
+  "options_backup_invalid": {"message": "Die Sicherungsdatei konnte nicht validiert werden."},
+  "options_backup_preview_title": {"message": "Importvorschau"},
+  "options_backup_preview_date": {"message": "Exportiert"},
+  "options_backup_preview_addresses": {"message": "DNS-Connectoren"},
+  "options_backup_preview_categories": {"message": "Einstellungskategorien"},
+  "options_backup_password_notice": {"message": "Vorhandene Zugangsdaten bleiben bei übereinstimmendem Backend-Typ und Adresse erhalten. Neue Connectoren benötigen nach dem Import lokale Zugangsdaten."},
+  "options_backup_apply": {"message": "Importierte Einstellungen anwenden"},
+  "options_backup_cancel": {"message": "Abbrechen"},
+  "options_sync_title": {"message": "Optionaler Browser-Sync"},
+  "options_sync_description": {"message": "Wähle die Kategorien einzeln aus. Sync ist standardmäßig ausgeschaltet und nutzt den Browser-Anbieter; Firefox- und Chromium-Konten synchronisieren nicht miteinander."},
+  "options_sync_general": {"message": "Darstellung, Verhalten und Kontextmenü-Einstellungen synchronisieren"},
+  "options_sync_timers": {"message": "Zeitvorgaben synchronisieren"},
+  "options_sync_group": {"message": "Ausgewählten Standard-Geltungsbereich synchronisieren"},
+  "options_sync_addresses": {"message": "Backend-Typen und Adressen ohne Zugangsdaten synchronisieren"},
+  "options_sync_now": {"message": "Aktivierte Kategorien jetzt synchronisieren"},
+  "options_sync_success": {"message": "Browser-Synchronisierung abgeschlossen."},
+  "options_sync_error": {"message": "Browser-Synchronisierung fehlgeschlagen."}
 }

@@ -127,21 +127,14 @@ jobs:
         run: npm run check
 
       - name: Prepare browser artifacts
-        run: npm run package:artifacts
-
-      - name: Apply tag-specific artifact names
         shell: bash
         run: |
           set -euo pipefail
-
-          if [[ "$RELEASE_LABEL" != "$VERSION" ]]; then
-            mv \
-              "artifacts/pihole-browser-extension-${VERSION}-firefox-unsigned.xpi" \
-              "artifacts/pihole-browser-extension-${RELEASE_LABEL}-firefox-unsigned.xpi"
-            mv \
-              "artifacts/pihole-browser-extension-${VERSION}-chrome.zip" \
-              "artifacts/pihole-browser-extension-${RELEASE_LABEL}-chrome.zip"
-          fi
+          mkdir -p artifacts
+          cp package.firefox.zip \
+            "artifacts/wormhole-connector-${RELEASE_LABEL}-firefox-unsigned.xpi"
+          cp package.chrome.zip \
+            "artifacts/wormhole-connector-${RELEASE_LABEL}-chrome.zip"
 
       - name: Create source archive
         shell: bash
@@ -149,7 +142,7 @@ jobs:
           set -euo pipefail
 
           SOURCE_DIR=$(mktemp -d)
-          SOURCE_ARCHIVE="artifacts/pihole-browser-extension-${RELEASE_LABEL}-source.zip"
+          SOURCE_ARCHIVE="artifacts/wormhole-connector-${RELEASE_LABEL}-source.zip"
           SOURCE_DATE_EPOCH=$(git show -s --format=%ct "$RELEASE_SHA")
           trap 'rm -rf "$SOURCE_DIR"' EXIT
 
@@ -230,7 +223,7 @@ jobs:
             gh api \
               --method PATCH \
               "repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}" \
-              -f name="Pi-hole Browser Extension ${RELEASE_LABEL}" \
+              -f name="Wormhole Connector ${RELEASE_LABEL}" \
               -F prerelease="$IS_PRERELEASE" \
               -f make_latest="$MAKE_LATEST" \
               >/dev/null
@@ -240,7 +233,7 @@ jobs:
               release-assets/*
               --repo "$GITHUB_REPOSITORY"
               --verify-tag
-              --title "Pi-hole Browser Extension ${RELEASE_LABEL}"
+              --title "Wormhole Connector ${RELEASE_LABEL}"
               --generate-notes
             )
 

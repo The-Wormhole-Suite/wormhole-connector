@@ -1,21 +1,29 @@
 # Privacy Policy
 
-Wormhole Connector needs access to the current browser tab and to the Pi-hole addresses configured by the user in order to provide its core functionality.
+Wormhole Connector needs access to the current browser tab and to user-configured Pi-hole or AdGuard Home addresses in order to provide its core functionality.
 
 ## Data processed
 
-- The current domain is sent to the configured Pi-hole instances for status checks and whitelist or blacklist actions.
-- The Pi-hole address and authentication information are sent only to the corresponding configured Pi-hole instance.
-- Pi-hole connection details, passwords, preferences and temporary-action state are stored in the browser's local extension storage.
-- Pi-hole session IDs are stored only in the browser's non-persistent extension session storage and are removed when sessions are closed or connection settings are replaced.
-- Settings backups exclude passwords by default. The user must explicitly enable credential inclusion for an exported file.
-- Browser-account synchronization is disabled by default. When enabled explicitly, it synchronizes only safe settings and connection addresses. Pi-hole passwords and session IDs are never synchronized.
+- The current domain is sent to configured DNS connectors for status checks and allow or deny actions.
+- A connector address and its authentication information are sent only to that configured Pi-hole or AdGuard Home server.
+- DNS connector details, preferences, and temporary-action recovery data are stored in the browser's local extension storage.
+- API session identifiers are stored only in extension session storage and are removed when the browser session ends. The extension also attempts to close them on Pi-hole when connection settings are replaced.
+
+## Local backup
+
+Settings can be exported to a versioned JSON file selected by the user. Backup files contain non-secret preferences, timer presets, the selected scope, and connector backend types/addresses. They never contain usernames, passwords, application passwords, session identifiers, CSRF values, or running temporary-action state. Imports are strictly validated and shown in a preview before they can be applied.
+
+## Optional browser synchronization
+
+Browser synchronization is off by default. The user can separately enable synchronization for general preferences, timer presets, the selected scope, and connector backend types/addresses. Enabled data is stored by the browser's synchronization provider, such as Mozilla or Google, under that provider's account and privacy terms.
+
+Usernames, passwords, application passwords, session identifiers, CSRF values, and running temporary-action state are never synchronized. Connector types and addresses are synchronized only when that separate category is enabled. Firefox and Chromium synchronization providers do not exchange data with each other.
 
 ## Data sharing
 
-Wormhole Connector does not send user data to the developers, analytics services, advertising services or unrelated third parties. Network requests made for Pi-hole control are directed only to addresses explicitly configured by the user.
+Wormhole Connector does not send user data to its developers, analytics services, advertising services, or a developer-operated cloud service. DNS-control requests are directed only to addresses explicitly configured by the user. Optional synchronization is handled by the browser provider only after the corresponding category is enabled.
 
-The extension does not install or contact an uninstall survey. Links opened deliberately by the user, such as the GitHub issue tracker or donation page, are external websites and are governed by their respective privacy policies.
+External links opened deliberately by the user, such as the GitHub issue tracker, are governed by the respective site's privacy policy.
 
 Copyright (c) 2020 Pascal Glaser
 Copyright (c) 2026 HyperCriSiS

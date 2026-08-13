@@ -38,6 +38,6 @@ Generated directories and browser packages must not be committed.
 - Keep code, workflows, commit messages and pull-request text in English.
 - Keep functional changes separate from CI, dependency or formatting-only changes.
 - Update or add tests when behavior changes.
-- Do not commit secrets, Pi-hole credentials, local configuration, generated archives or build output.
+- Do not commit secrets, DNS-backend credentials, local configuration, generated archives or build output.
 - Ensure `npm run check` succeeds before requesting review.
 - Delete short-lived branches after their pull requests are merged or closed.

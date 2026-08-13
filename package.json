@@ -1,6 +1,6 @@
 {
 	"name": "wormhole-connector",
-	"version": "4.2.0",
+	"version": "5.0.1",
 	"description": "Browser extension for controlling Pi-hole v6 and AdGuard Home as part of The Wormhole Suite.",
 	"engines": {
 		"node": ">=22 <25"

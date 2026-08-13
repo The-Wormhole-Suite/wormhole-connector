@@ -101,8 +101,9 @@ import {
   TemporaryAllowTimeDefaults,
 } from '../../../../service/StorageService'
 import useTranslation from '../../../../hooks/translation'
-import PiHoleApiService from '../../../../service/PiHoleApiService'
-import type { PiHoleGroup } from '../../../../api/models/PiHoleGroups'
+import ConnectorApiService, {
+  type ConnectorScope,
+} from '../../../../service/ConnectorApiService'
 
 const areValidPresetTimes = (times: number[]): boolean => {
   const normalizedTimes = times.map(Number)
@@ -116,7 +117,7 @@ export default defineComponent({
   name: 'OptionActionTimesComponent',
   setup: () => {
     const { translate, I18NOptionKeys } = useTranslation()
-    const groups = ref<PiHoleGroup[]>([])
+    const groups = ref<ConnectorScope[]>([])
     const groupsLoading = ref(false)
     const groupLoadError = ref(false)
     const selectedGroup = ref<string | null>(null)
@@ -161,7 +162,7 @@ export default defineComponent({
       badgeUsesSelectedGroup.value = useSelectedGroupForBadge
 
       try {
-        groups.value = await PiHoleApiService.getCommonGroups()
+        groups.value = await ConnectorApiService.getCommonScopes()
         const validStoredGroup = groups.value.some(
           (group) => group.name === storedGroup,
         )

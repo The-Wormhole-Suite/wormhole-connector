@@ -34,8 +34,7 @@
         </v-btn>
       </v-card-text>
     </v-card>
-
-    <OptionDataManagementComponent />
+    <OptionBackupSyncComponent class="mt-5" />
   </div>
 </template>
 
@@ -43,12 +42,11 @@
 import { computed, defineComponent } from 'vue'
 import { I18NOptionKeys } from '../../../../service/i18NService'
 import { StorageService } from '../../../../service/StorageService'
-import MessageBusService from '../../../../service/MessageBusService'
 import useTranslation from '../../../../hooks/translation'
 import OptionCheckboxComponent from '../settings/OptionCheckboxComponent.vue'
 import OptionTabComponent from '../settings/OptionTabComponent.vue'
 import OptionDisableTimeComponent from '../settings/OptionDisableTimeComponent.vue'
-import OptionDataManagementComponent from '../settings/OptionDataManagementComponent.vue'
+import OptionBackupSyncComponent from '../settings/OptionBackupSyncComponent.vue'
 
 export default defineComponent({
   name: 'OptionSettingsView',
@@ -56,7 +54,7 @@ export default defineComponent({
     OptionDisableTimeComponent,
     OptionTabComponent,
     OptionCheckboxComponent,
-    OptionDataManagementComponent,
+    OptionBackupSyncComponent,
   },
   setup: () => {
     const { translate } = useTranslation()
@@ -83,10 +81,8 @@ export default defineComponent({
       {
         labelTextKey: I18NOptionKeys.option_disable_context_menu,
         getterFunction: () => StorageService.getDisableContextMenu(),
-        setterFunction: (value: boolean) => {
-          MessageBusService.sendContextMenuSwitchMessage(value)
-          StorageService.saveDisableContextMenu(value)
-        },
+        setterFunction: (value: boolean) =>
+          StorageService.saveDisableContextMenu(value),
       },
     ]
 
@@ -108,9 +104,12 @@ export default defineComponent({
   },
 })
 
+/**
+ * Interface that represents a checkbox option in the settings
+ */
 interface GenericCheckboxComponent {
   labelTextKey: I18NOptionKeys
   getterFunction: () => Promise<boolean | undefined> | Promise<boolean>
-  setterFunction: (value: boolean) => void
+  setterFunction: (value: boolean) => void | Promise<void>
 }
 </script>

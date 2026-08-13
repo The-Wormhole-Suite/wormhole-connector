@@ -13,7 +13,7 @@
           Pascal Glaser
         </a>
         <br />
-        <a :href="LinkConfig.github_user_erikr729" target="_blank">
+        <a :href="LinkConfig.github_user_limitationz" target="_blank">
           Erik Rill
         </a>
         <br />

@@ -9,8 +9,10 @@
       </v-btn>
       <p>{{ translate(I18NOptionKeys.option_about_copy_debug) }}</p>
       <p ref="versionInfoElement">
-        PiHole Browser Extension: {{ extensionVersion }} <br />Operating System:
-        {{ platform }} <br />Browser: {{ browser }}
+        {{ translate('extension_name') }}: {{ extensionVersion }} <br />
+        {{ translate(I18NOptionKeys.option_debug_operating_system) }}:
+        {{ platform }} <br />
+        {{ translate(I18NOptionKeys.option_debug_browser) }}: {{ browser }}
       </p>
       <v-btn @click="copyToClipboard">
         <v-icon>
@@ -62,7 +64,7 @@ export default defineComponent({
         return `Chrome/Chromium ${version}`
       }
 
-      return 'Other/Unknown'
+      return translate(I18NOptionKeys.option_debug_browser_unknown)
     })
 
     const copyToClipboard = () => {

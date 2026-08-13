@@ -10,6 +10,7 @@ export enum ExtensionBadgeTextEnum {
   enabled = 'On',
   enabledBlocked = 'On!',
   disabled = 'Off',
+  mixed = 'Mix',
   error = 'Err',
   info = 'Info',
   ok = 'Ok',
@@ -132,6 +133,8 @@ export class BadgeService {
         return apiStatus === PiHoleApiStatusEnum.enabled
       case ExtensionBadgeTextEnum.disabled:
         return apiStatus === PiHoleApiStatusEnum.disabled
+      case ExtensionBadgeTextEnum.mixed:
+        return apiStatus === PiHoleApiStatusEnum.mixed
       default:
         return false
     }
@@ -200,6 +203,9 @@ export class BadgeService {
     if (status === PiHoleApiStatusEnum.disabled) {
       return 'disabled'
     }
+    if (status === PiHoleApiStatusEnum.mixed) {
+      return 'mixed'
+    }
     if (status === PiHoleApiStatusEnum.error) {
       return 'error'
     }
@@ -217,6 +223,8 @@ export class BadgeService {
         return 'blocked'
       case ExtensionBadgeTextEnum.disabled:
         return 'disabled'
+      case ExtensionBadgeTextEnum.mixed:
+        return 'mixed'
       case ExtensionBadgeTextEnum.error:
         return 'error'
       default:
@@ -235,6 +243,8 @@ export class BadgeService {
         return ExtensionBadgeTextEnum.enabledBlocked
       case 'disabled':
         return ExtensionBadgeTextEnum.disabled
+      case 'mixed':
+        return ExtensionBadgeTextEnum.mixed
       default:
         return ExtensionBadgeTextEnum.error
     }

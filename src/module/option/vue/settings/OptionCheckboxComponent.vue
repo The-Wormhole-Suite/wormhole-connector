@@ -20,7 +20,7 @@ export default defineComponent({
       required: true,
     },
     setterFunction: {
-      type: Function as PropType<(value: boolean) => void>,
+      type: Function as PropType<(value: boolean) => void | Promise<void>>,
       required: true,
     },
   },
@@ -44,7 +44,9 @@ export default defineComponent({
     })
 
     watch(isChecked, () => {
-      props.setterFunction(isChecked.value)
+      Promise.resolve(props.setterFunction(isChecked.value)).catch((reason) => {
+        console.error('Failed to save checkbox setting', reason)
+      })
     })
     return { translate, isChecked }
   },

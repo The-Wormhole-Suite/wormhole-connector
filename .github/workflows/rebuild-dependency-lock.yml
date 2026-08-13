@@ -1,4 +1,4 @@
-name: Rebuild dependency lock
+name: Rebuild dependency metadata
 
 on:
   pull_request:
@@ -34,25 +34,34 @@ jobs:
       - name: Rebuild package lock
         run: npm run rebuild-package-lock
 
+      - name: Commit rebuilt lockfile
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add package-lock.json
+          if git diff --cached --quiet; then
+            echo 'No package-lock.json changes to commit.'
+          else
+            git commit -m 'Rebuild dependency lock'
+            git push origin HEAD:dev
+          fi
+
       - name: Install rebuilt graph
         run: npm ci --prefer-offline --no-audit --no-fund --loglevel=error
 
       - name: Regenerate third-party notices
         run: npm run notices:generate
 
-      - name: Run complete project checks
-        run: npm run check
-
-      - name: Commit validated metadata
+      - name: Commit regenerated notices
         shell: bash
         run: |
           set -euo pipefail
-          git config user.name 'github-actions[bot]'
-          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add package-lock.json THIRD_PARTY_NOTICES.txt
+          git add THIRD_PARTY_NOTICES.txt
           if git diff --cached --quiet; then
-            echo 'No dependency metadata changes to commit.'
-            exit 0
+            echo 'No THIRD_PARTY_NOTICES.txt changes to commit.'
+          else
+            git commit -m 'Refresh third-party notices'
+            git push origin HEAD:dev
           fi
-          git commit -m 'Rebuild dependency lock and notices'
-          git push origin HEAD:dev

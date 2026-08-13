@@ -5,6 +5,7 @@ import * as path from 'path'
 import CopyWebpackPlugin from 'copy-webpack-plugin'
 import { VueLoaderPlugin } from 'vue-loader'
 import ESLintWebpackPlugin from 'eslint-webpack-plugin'
+import MiniCssExtractPlugin from 'mini-css-extract-plugin'
 
 export class WebpackConfigFactory {
   public static createConfig(
@@ -31,12 +32,29 @@ export class WebpackConfigFactory {
       output: {
         path: path.join(__dirname, '../../dist/' + browser),
         filename: '[name].js',
+        globalObject: 'globalThis',
+        environment: {
+          globalThis: true,
+        },
       },
       module: {
         rules: [
           {
+            test: /(?:@vue[\\/]runtime-dom[\\/].*\.js|vuetify[\\/]lib[\\/]composables[\\/]theme\.js)$/,
+            enforce: 'pre',
+            loader: path.join(
+              repositoryRoot,
+              'scripts/loaders/amo-safe-dom-loader.cjs',
+            ),
+          },
+          {
             test: /\.vue$/,
             loader: 'vue-loader',
+            options: {
+              compilerOptions: {
+                hoistStatic: false,
+              },
+            },
           },
           {
             test: /\.tsx?$/,
@@ -48,7 +66,7 @@ export class WebpackConfigFactory {
           },
           {
             test: /\.(scss|css)$/,
-            use: ['style-loader', 'css-loader', 'sass-loader'],
+            use: [MiniCssExtractPlugin.loader, 'css-loader', 'sass-loader'],
           },
           {
             test: /\.(woff|woff2|ttf|eot)$/,
@@ -59,7 +77,7 @@ export class WebpackConfigFactory {
       resolve: {
         extensions: ['.js', '.ts', '.vue'],
         alias: {
-          vue$: 'vue/dist/vue.esm-bundler.js',
+          vue$: 'vue/dist/vue.runtime.esm-bundler.js',
         },
       },
       optimization: {
@@ -80,6 +98,7 @@ export class WebpackConfigFactory {
             {
               from: 'manifest.' + browser + '.json',
               to: 'manifest.json',
+              toType: 'file',
             },
             {
               from: '_locales',
@@ -88,6 +107,31 @@ export class WebpackConfigFactory {
             {
               from: 'icon',
               to: 'icon',
+            },
+            {
+              from: path.join(repositoryRoot, 'LICENSE'),
+              to: 'LICENSE.txt',
+              toType: 'file',
+            },
+            {
+              from: path.join(repositoryRoot, 'NOTICE'),
+              to: 'NOTICE.txt',
+              toType: 'file',
+            },
+            {
+              from: 'CREDITS.md',
+              to: 'CREDITS.txt',
+              toType: 'file',
+            },
+            {
+              from: 'THIRD_PARTY_NOTICES.txt',
+              to: 'THIRD_PARTY_NOTICES.txt',
+              toType: 'file',
+            },
+            {
+              from: 'PRIVACY',
+              to: 'PRIVACY.txt',
+              toType: 'file',
             },
           ],
         }),
@@ -118,6 +162,7 @@ export class WebpackConfigFactory {
             chunks: ['background'],
           }),
         new VueLoaderPlugin(),
+        new MiniCssExtractPlugin({ filename: '[name].css' }),
         new ESLintWebpackPlugin({
           configType: 'flat',
           cwd: repositoryRoot,

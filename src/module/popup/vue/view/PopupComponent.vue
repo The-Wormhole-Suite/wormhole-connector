@@ -63,8 +63,9 @@ import { StorageService } from '../../../../service/StorageService'
 import TabService from '../../../../service/TabService'
 import useTranslation from '../../../../hooks/translation'
 import DomainStatusService from '../../../../service/DomainStatusService'
-import PiHoleApiService from '../../../../service/PiHoleApiService'
-import type { PiHoleGroup } from '../../../../api/models/PiHoleGroups'
+import ConnectorApiService, {
+  type ConnectorScope,
+} from '../../../../service/ConnectorApiService'
 import type { ToolbarIconState } from '../../../../service/BadgeState'
 
 export default defineComponent({
@@ -78,7 +79,7 @@ export default defineComponent({
     const { translate, I18NPopupKeys, I18NOptionKeys } = useTranslation()
     const currentUrl = ref('')
     const selectedGroup = ref<string | null>(null)
-    const groups = ref<PiHoleGroup[]>([])
+    const groups = ref<ConnectorScope[]>([])
     const groupsLoading = ref(false)
     const groupLoadError = ref(false)
     const hideGroupSelector = ref(false)
@@ -88,9 +89,11 @@ export default defineComponent({
     const headerIconState = ref<ToolbarIconState>('unknown')
     let headerIconRequestId = 0
 
-    const headerIconPath = computed(
-      () => `icon/status/${headerIconState.value}-48.png`,
-    )
+    const headerIconPath = computed(() => {
+      const iconState =
+        headerIconState.value === 'mixed' ? 'unknown' : headerIconState.value
+      return `icon/status/${iconState}-48.png`
+    })
 
     const refreshHeaderIcon = async () => {
       const requestId = ++headerIconRequestId
@@ -134,7 +137,7 @@ export default defineComponent({
       const storedGroup = await StorageService.getPauseTarget()
 
       try {
-        groups.value = await PiHoleApiService.getCommonGroups()
+        groups.value = await ConnectorApiService.getCommonScopes()
         const storedGroupExists = groups.value.some(
           (group) => group.name === storedGroup,
         )

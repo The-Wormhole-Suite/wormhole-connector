@@ -1,11 +1,7 @@
 import PiHoleApiStatusEnum from '../api/enum/PiHoleApiStatusEnum'
-import {
-  combineDomainStates,
-  DomainBlockingState,
-  evaluateDomainSearch,
-} from './DomainStatusEvaluator'
+import { DomainBlockingState } from './DomainStatusEvaluator'
 import { BadgeService } from './BadgeService'
-import PiHoleApiService from './PiHoleApiService'
+import ConnectorApiService from './ConnectorApiService'
 import { StorageService } from './StorageService'
 import TabService from './TabService'
 import TemporaryIconStateService from './TemporaryIconStateService'
@@ -23,7 +19,7 @@ export type CurrentDomainStatus = {
 
 export default class DomainStatusService {
   public static async getCurrentToolbarIconState(): Promise<ToolbarIconState> {
-    const globalStatus = await PiHoleApiService.getPiHoleStatusCombined()
+    const globalStatus = await ConnectorApiService.getProtectionStatusCombined()
     const globalState = this.toGlobalToolbarIconState(globalStatus)
 
     if (globalState !== 'active') {
@@ -60,57 +56,7 @@ export default class DomainStatusService {
       return 'unknown'
     }
 
-    let piHoles
-    try {
-      piHoles = await PiHoleApiService.getConfiguredPiHoles()
-    } catch (reason) {
-      console.warn('Could not load configured Pi-hole instances', reason)
-      return 'unknown'
-    }
-
-    const states = await Promise.all(
-      piHoles.map(async (piHole): Promise<DomainBlockingState> => {
-        try {
-          const blockingStatus =
-            await PiHoleApiService.getPiHoleStatusFor(piHole)
-          if (blockingStatus.blocking === PiHoleApiStatusEnum.disabled) {
-            return 'allowed'
-          }
-          if (blockingStatus.blocking !== PiHoleApiStatusEnum.enabled) {
-            return 'unknown'
-          }
-
-          const groups = await PiHoleApiService.getGroups(piHole)
-          const preferredGroup = preferredGroupName
-            ? groups.find((item) => item.name === preferredGroupName)
-            : undefined
-
-          if (preferredGroup && !preferredGroup.enabled) {
-            return 'allowed'
-          }
-
-          const group =
-            preferredGroup ||
-            groups.find((item) => item.enabled && item.name === 'Default') ||
-            groups.find((item) => item.enabled)
-
-          if (!group) {
-            return 'unknown'
-          }
-
-          const search = await PiHoleApiService.searchDomain(piHole, domain)
-          return evaluateDomainSearch(search, group.id)
-        } catch (reason) {
-          console.warn(
-            `Could not determine the blocking status for ${domain}`,
-            reason,
-          )
-          return 'unknown'
-        }
-      }),
-    )
-
-    return combineDomainStates(states)
+    return ConnectorApiService.getDomainStatus(domain, preferredGroupName)
   }
 
   public static async refreshCurrentTabIcon(
@@ -202,6 +148,9 @@ export default class DomainStatusService {
     }
     if (status === PiHoleApiStatusEnum.disabled) {
       return 'disabled'
+    }
+    if (status === PiHoleApiStatusEnum.mixed) {
+      return 'mixed'
     }
     if (status === PiHoleApiStatusEnum.error) {
       return 'error'

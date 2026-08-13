@@ -1,8 +1,13 @@
 <template>
   <section class="popup-section domain-control">
     <div class="section-heading-row">
-      <div class="section-title">
-        {{ translate(I18NPopupKeys.popup_second_card_current_url) }}
+      <div>
+        <div class="section-title">
+          {{ translate(I18NPopupKeys.popup_second_card_current_url) }}
+        </div>
+        <div class="status-scope">
+          {{ translate(I18NPopupKeys.popup_default_group_scope) }}
+        </div>
       </div>
       <v-chip
         class="domain-status"
@@ -122,15 +127,15 @@
     </div>
     <div class="timer-row">
       <v-btn
-        v-for="time in temporaryAllowTimes"
-        :key="time"
+        v-for="(time, index) in temporaryAllowTimes"
+        :key="`temporary-${index}`"
         class="timer-button"
         color="orange-darken-2"
         size="small"
         variant="flat"
         :disabled="buttonsDisabled || !selectedGroup"
-        :loading="temporaryWhitelistingActive === time"
-        @click="temporarilyWhitelistUrl(time)"
+        :loading="temporaryWhitelistingActive === index"
+        @click="temporarilyWhitelistUrl(time, index)"
       >
         <v-icon size="16" start>{{ mdiTimerOutline }}</v-icon>
         {{ time }} s
@@ -140,6 +145,9 @@
     <div v-if="actionError" class="inline-error">
       {{ translate(I18NPopupKeys.popup_domain_action_error) }}
     </div>
+    <ul v-if="failureDetails.length > 0" class="failure-details">
+      <li v-for="detail in failureDetails" :key="detail">{{ detail }}</li>
+    </ul>
   </section>
 </template>
 
@@ -153,7 +161,7 @@ import {
   watch,
   type PropType,
 } from 'vue'
-import PiHoleApiService from '../../../../service/PiHoleApiService'
+import ConnectorApiService from '../../../../service/ConnectorApiService'
 import ApiList from '../../../../api/enum/ApiList'
 import useTranslation from '../../../../hooks/translation'
 import {
@@ -163,8 +171,10 @@ import {
 import TabService from '../../../../service/TabService'
 import DomainStatusService from '../../../../service/DomainStatusService'
 import type { DomainBlockingState } from '../../../../service/DomainStatusEvaluator'
-import type { PiHoleGroup } from '../../../../api/models/PiHoleGroups'
+import type { ConnectorScope } from '../../../../service/ConnectorApiService'
+import ConnectorScopeDomainService from '../../../../service/ConnectorScopeDomainService'
 import GroupDomainService from '../../../../service/GroupDomainService'
+import { getOperationFailureDetails } from '../../../../service/MultiInstanceOperation'
 
 export default defineComponent({
   name: 'PopupListCardComponent',
@@ -174,11 +184,11 @@ export default defineComponent({
       required: true,
     },
     selectedGroup: {
-      type: String,
+      type: String as PropType<string | null>,
       default: null,
     },
     groups: {
-      type: Array as PropType<PiHoleGroup[]>,
+      type: Array as PropType<ConnectorScope[]>,
       default: () => [],
     },
     groupsLoading: {
@@ -215,6 +225,7 @@ export default defineComponent({
     const globalStatusLoading = ref(false)
     const groupStatusLoading = ref(false)
     const actionError = ref(false)
+    const failureDetails = ref<string[]>([])
 
     const groupItems = computed(() =>
       props.groups.map((group) => ({ title: group.name, value: group.name })),
@@ -341,17 +352,17 @@ export default defineComponent({
 
       buttonsDisabled.value = true
       actionError.value = false
+      failureDetails.value = []
       globalActionLoading.value = mode
 
       try {
-        await GroupDomainService.cancelTemporaryAllowsForDomain(
-          props.currentUrl,
-        )
-        await PiHoleApiService.subDomainFromList(
-          mode === ApiList.whitelist ? ApiList.blacklist : ApiList.whitelist,
-          props.currentUrl,
-        )
-        await PiHoleApiService.addDomainToList(mode, props.currentUrl)
+        await ConnectorApiService.setDomainListGlobally(mode, props.currentUrl)
+        await Promise.all([
+          ConnectorScopeDomainService.cancelTemporaryAllowsForDomain(
+            props.currentUrl,
+          ),
+          GroupDomainService.cancelTemporaryAllowsForDomain(props.currentUrl),
+        ])
         await refreshDomainStatuses()
 
         if (mode === ApiList.whitelist) {
@@ -360,6 +371,7 @@ export default defineComponent({
       } catch (reason) {
         console.warn(reason)
         actionError.value = true
+        failureDetails.value = getOperationFailureDetails(reason)
       } finally {
         finishAction()
       }
@@ -372,10 +384,11 @@ export default defineComponent({
 
       buttonsDisabled.value = true
       actionError.value = false
+      failureDetails.value = []
       groupActionLoading.value = mode
 
       try {
-        await GroupDomainService.setDomainListForGroup(
+        await ConnectorScopeDomainService.setDomainListForScope(
           mode,
           props.currentUrl,
           props.selectedGroup,
@@ -388,22 +401,27 @@ export default defineComponent({
       } catch (reason) {
         console.warn(reason)
         actionError.value = true
+        failureDetails.value = getOperationFailureDetails(reason)
       } finally {
         finishAction()
       }
     }
 
-    const temporarilyWhitelistUrl = async (durationSeconds: number) => {
+    const temporarilyWhitelistUrl = async (
+      durationSeconds: number,
+      timerIndex: number,
+    ) => {
       if (!props.currentUrl || !props.selectedGroup || durationSeconds < 1) {
         return
       }
 
       buttonsDisabled.value = true
       actionError.value = false
-      temporaryWhitelistingActive.value = durationSeconds
+      failureDetails.value = []
+      temporaryWhitelistingActive.value = timerIndex
 
       try {
-        await GroupDomainService.temporarilyAllowDomainForGroup(
+        await ConnectorScopeDomainService.temporarilyAllowDomainForScope(
           props.currentUrl,
           props.selectedGroup,
           durationSeconds,
@@ -413,6 +431,7 @@ export default defineComponent({
       } catch (reason) {
         console.warn(reason)
         actionError.value = true
+        failureDetails.value = getOperationFailureDetails(reason)
       } finally {
         finishAction()
       }
@@ -447,6 +466,7 @@ export default defineComponent({
       globalStatusLoading,
       groupStatusLoading,
       actionError,
+      failureDetails,
       mdiCheck,
       mdiClose,
       mdiTimerOutline,
@@ -486,6 +506,13 @@ export default defineComponent({
 .domain-status {
   flex: 0 0 auto;
   font-size: 10px;
+}
+
+.status-scope {
+  margin-top: -4px;
+  color: rgba(var(--v-theme-on-surface), 0.68);
+  font-size: 10px;
+  line-height: 1.2;
 }
 
 .domain-display {
@@ -542,6 +569,13 @@ export default defineComponent({
   margin-top: 6px;
   color: rgb(var(--v-theme-error));
   font-size: 11px;
+  line-height: 1.3;
+}
+
+.failure-details {
+  margin: 4px 0 0;
+  padding-inline-start: 18px;
+  font-size: 10px;
   line-height: 1.3;
 }
 </style>

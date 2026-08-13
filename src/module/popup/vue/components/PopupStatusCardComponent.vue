@@ -7,6 +7,7 @@
       <v-switch
         class="control-switch"
         :model-value="groupBlockingActive"
+        :indeterminate="groupMixed"
         color="green"
         density="compact"
         hide-details
@@ -22,20 +23,24 @@
       ></v-switch>
     </div>
 
+    <div v-if="groupMixed" class="inline-warning">
+      {{ translate(I18NPopupKeys.popup_group_mixed) }}
+    </div>
+
     <div class="timer-label">
       {{ translate(I18NPopupKeys.popup_group_pause_times_title) }}
     </div>
     <div class="timer-row">
       <v-btn
-        v-for="time in groupPauseTimes"
-        :key="time"
+        v-for="(time, index) in groupPauseTimes"
+        :key="`group-pause-${index}`"
         class="timer-button"
         color="orange-darken-2"
         size="small"
         variant="flat"
         :disabled="groupActionLoading || groupsLoading || !selectedGroup"
-        :loading="groupTimedActionLoading === time"
-        @click="pauseGroupFor(time)"
+        :loading="groupTimedActionLoading === index"
+        @click="pauseGroupFor(time, index)"
       >
         <v-icon size="16" start>{{ mdiTimerOutline }}</v-icon>
         {{ time }} s
@@ -48,26 +53,30 @@
     >
       {{ translate(I18NPopupKeys.popup_group_error) }}
     </div>
+    <ul v-if="failureDetails.length > 0" class="failure-details">
+      <li v-for="detail in failureDetails" :key="detail">{{ detail }}</li>
+    </ul>
   </section>
 </template>
 
 <script lang="ts">
 import { mdiTimerOutline } from '@mdi/js'
-import { defineComponent, onMounted, ref, watch } from 'vue'
+import { defineComponent, onMounted, ref, watch, type PropType } from 'vue'
 import {
   GroupPauseTimeDefaults,
   StorageService,
 } from '../../../../service/StorageService'
 import TabService from '../../../../service/TabService'
 import useTranslation from '../../../../hooks/translation'
-import GroupPauseService from '../../../../service/GroupPauseService'
+import ConnectorScopePauseService from '../../../../service/ConnectorScopePauseService'
 import DomainStatusService from '../../../../service/DomainStatusService'
+import { getOperationFailureDetails } from '../../../../service/MultiInstanceOperation'
 
 export default defineComponent({
   name: 'PopupStatusCardComponent',
   props: {
     selectedGroup: {
-      type: String,
+      type: String as PropType<string | null>,
       default: null,
     },
     groupsLoading: {
@@ -83,11 +92,13 @@ export default defineComponent({
   setup: (props, { emit }) => {
     const { translate, I18NPopupKeys } = useTranslation()
     const groupPauseTimes = ref<number[]>([...GroupPauseTimeDefaults])
-    const groupBlockingActive = ref(true)
+    const groupBlockingActive = ref<boolean | null>(true)
+    const groupMixed = ref(false)
     const groupSwitchDisabled = ref(true)
     const groupActionLoading = ref(false)
     const groupTimedActionLoading = ref<number | null>(null)
     const groupActionState = ref<'success' | 'error' | null>(null)
+    const failureDetails = ref<string[]>([])
 
     const updateSelectedGroupStatus = async () => {
       if (!props.selectedGroup) {
@@ -97,13 +108,16 @@ export default defineComponent({
 
       groupSwitchDisabled.value = true
       try {
-        groupBlockingActive.value = !(await GroupPauseService.isGroupPaused(
+        const state = await ConnectorScopePauseService.getScopeState(
           props.selectedGroup,
-        ))
+        )
+        groupMixed.value = state === 'mixed'
+        groupBlockingActive.value = groupMixed.value ? null : state === 'active'
         groupSwitchDisabled.value = false
       } catch (reason) {
         console.warn(reason)
         groupBlockingActive.value = false
+        groupMixed.value = false
         groupActionState.value = 'error'
       }
     }
@@ -129,15 +143,17 @@ export default defineComponent({
       groupActionLoading.value = true
       groupTimedActionLoading.value = null
       groupActionState.value = null
+      failureDetails.value = []
       groupSwitchDisabled.value = true
       try {
         if (blockingEnabled) {
-          await GroupPauseService.resumeGroup(props.selectedGroup)
+          await ConnectorScopePauseService.resumeScope(props.selectedGroup)
         } else {
-          await GroupPauseService.pauseGroup(props.selectedGroup, 0)
+          await ConnectorScopePauseService.pauseScope(props.selectedGroup, 0)
         }
 
         groupBlockingActive.value = blockingEnabled
+        groupMixed.value = false
         await DomainStatusService.refreshCurrentTabBadge()
         emit('group-state-change')
         if (!blockingEnabled) {
@@ -146,6 +162,7 @@ export default defineComponent({
       } catch (reason) {
         console.warn(reason)
         groupActionState.value = 'error'
+        failureDetails.value = getOperationFailureDetails(reason)
         await updateSelectedGroupStatus()
       } finally {
         groupActionLoading.value = false
@@ -153,24 +170,33 @@ export default defineComponent({
       }
     }
 
-    const pauseGroupFor = async (durationSeconds: number) => {
+    const pauseGroupFor = async (
+      durationSeconds: number,
+      timerIndex: number,
+    ) => {
       if (!props.selectedGroup || durationSeconds < 1) {
         return
       }
 
       groupActionLoading.value = true
-      groupTimedActionLoading.value = durationSeconds
+      groupTimedActionLoading.value = timerIndex
       groupActionState.value = null
+      failureDetails.value = []
       groupSwitchDisabled.value = true
       try {
-        await GroupPauseService.pauseGroup(props.selectedGroup, durationSeconds)
+        await ConnectorScopePauseService.pauseScope(
+          props.selectedGroup,
+          durationSeconds,
+        )
         groupBlockingActive.value = false
+        groupMixed.value = false
         await DomainStatusService.refreshCurrentTabBadge()
         emit('group-state-change')
         await reloadAfterPause()
       } catch (reason) {
         console.warn(reason)
         groupActionState.value = 'error'
+        failureDetails.value = getOperationFailureDetails(reason)
         await updateSelectedGroupStatus()
       } finally {
         groupTimedActionLoading.value = null
@@ -196,10 +222,12 @@ export default defineComponent({
       mdiTimerOutline,
       groupPauseTimes,
       groupBlockingActive,
+      groupMixed,
       groupSwitchDisabled,
       groupActionLoading,
       groupTimedActionLoading,
       groupActionState,
+      failureDetails,
       changeGroupState,
       pauseGroupFor,
       translate,
@@ -264,6 +292,20 @@ export default defineComponent({
   margin-top: 6px;
   color: rgb(var(--v-theme-error));
   font-size: 11px;
+  line-height: 1.3;
+}
+
+.inline-warning {
+  margin: 2px 0 4px;
+  color: rgb(var(--v-theme-warning));
+  font-size: 11px;
+  line-height: 1.3;
+}
+
+.failure-details {
+  margin: 4px 0 0;
+  padding-inline-start: 18px;
+  font-size: 10px;
   line-height: 1.3;
 }
 </style>

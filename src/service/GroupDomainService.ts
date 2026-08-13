@@ -1,14 +1,18 @@
 import ApiList from '../api/enum/ApiList'
 import type { PiHoleDomain } from '../api/models/PiHoleDomains'
+import {
+  runMultiInstanceTransaction,
+  type MultiInstanceTarget,
+} from './MultiInstanceOperation'
+import OperationCoordinator from './OperationCoordinator'
 import PiHoleApiService from './PiHoleApiService'
 import type { PiHoleSettingsStorage } from './StorageService'
 
 const STORAGE_KEY = 'temporary_group_domain_actions_v2'
 const ALARM_PREFIX = 'pihole.temporaryGroupDomain.'
 const RESTORE_RETRY_DELAY = 60 * 1000
-const TEMPORARY_ALLOW_COMMENT =
-  'Temporary group allow by PiHole Browser Extension'
-const PERMANENT_RULE_COMMENT = 'From PiHole Extension'
+const TEMPORARY_ALLOW_COMMENT = 'Temporary group allow by Wormhole Connector'
+const PERMANENT_RULE_COMMENT = 'From Wormhole Connector'
 
 type TemporaryTarget = {
   pi_uri_base: string
@@ -26,6 +30,12 @@ type TemporaryAction = {
 
 type TemporaryStorage = {
   actions: Record<string, TemporaryAction>
+}
+
+type GroupDomainSnapshot = {
+  groupId: number
+  target: PiHoleDomain | null
+  opposite: PiHoleDomain | null
 }
 
 export default class GroupDomainService {
@@ -57,21 +67,56 @@ export default class GroupDomainService {
     groupName: string,
   ): Promise<void> {
     this.assertDomainAndGroup(domain, groupName)
-    await this.cancelTemporaryAllowForGroup(domain, groupName)
 
-    const oppositeList =
-      list === ApiList.whitelist ? ApiList.blacklist : ApiList.whitelist
-    const piHoles = await PiHoleApiService.getConfiguredPiHoles()
+    await OperationCoordinator.runExclusive(
+      [STORAGE_KEY, `domain:${domain}`, `group:${groupName}`],
+      async () => {
+        const opposite =
+          list === ApiList.whitelist ? ApiList.blacklist : ApiList.whitelist
+        const piHoles = await PiHoleApiService.getConfiguredPiHoles()
 
-    for (const piHole of piHoles) {
-      const group = await PiHoleApiService.getGroup(piHole, groupName)
-      if (!group) {
-        throw new Error(`Group ${groupName} is missing on one Pi-hole`)
-      }
+        await runMultiInstanceTransaction(
+          this.toTargets(piHoles),
+          async (piHole): Promise<GroupDomainSnapshot> => {
+            const [group, target, oppositeDomain] = await Promise.all([
+              PiHoleApiService.getGroup(piHole, groupName),
+              PiHoleApiService.getExactDomain(piHole, list, domain),
+              PiHoleApiService.getExactDomain(piHole, opposite, domain),
+            ])
+            if (!group) {
+              throw new Error(`Group ${groupName} is missing`)
+            }
+            return {
+              groupId: group.id,
+              target: target ? this.cloneDomain(target) : null,
+              opposite: oppositeDomain
+                ? this.cloneDomain(oppositeDomain)
+                : null,
+            }
+          },
+          async (piHole, snapshot) => {
+            await this.removeGroupFromDomain(
+              piHole,
+              opposite,
+              domain,
+              snapshot.groupId,
+            )
+            await this.addGroupToDomain(piHole, list, domain, snapshot.groupId)
+          },
+          async (piHole, snapshot) => {
+            await this.restoreExactDomain(piHole, list, domain, snapshot.target)
+            await this.restoreExactDomain(
+              piHole,
+              opposite,
+              domain,
+              snapshot.opposite,
+            )
+          },
+        )
 
-      await this.removeGroupFromDomain(piHole, oppositeList, domain, group.id)
-      await this.addGroupToDomain(piHole, list, domain, group.id)
-    }
+        await this.forgetTemporaryAllowForGroupLocked(domain, groupName)
+      },
+    )
   }
 
   public static async temporarilyAllowDomainForGroup(
@@ -82,11 +127,58 @@ export default class GroupDomainService {
     this.assertDomainAndGroup(domain, groupName)
     this.assertDuration(durationSeconds)
 
+    return OperationCoordinator.runExclusive(
+      [STORAGE_KEY, `domain:${domain}`, `group:${groupName}`],
+      () =>
+        this.temporarilyAllowDomainForGroupLocked(
+          domain,
+          groupName,
+          durationSeconds,
+        ),
+    )
+  }
+
+  public static async cancelTemporaryAllowsForDomain(
+    domain: string,
+  ): Promise<void> {
+    if (!domain) {
+      return
+    }
+
+    await OperationCoordinator.runExclusive(
+      [STORAGE_KEY, `domain:${domain}`],
+      async () => {
+        const storage = await this.getStorage()
+        const matchingKeys = Object.entries(storage.actions)
+          .filter(([, action]) => action.domain === domain)
+          .map(([key]) => key)
+
+        for (const key of matchingKeys) {
+          delete storage.actions[key]
+          await this.clearAlarm(`${ALARM_PREFIX}${key}`)
+        }
+
+        if (matchingKeys.length > 0) {
+          await this.saveStorage(storage)
+        }
+      },
+    )
+  }
+
+  private static async temporarilyAllowDomainForGroupLocked(
+    domain: string,
+    groupName: string,
+    durationSeconds: number,
+  ): Promise<boolean> {
     const key = this.createActionKey(domain, groupName)
     let storage = await this.getStorage()
     const existingAction = storage.actions[key]
 
-    if (existingAction && existingAction.expiresAt > Date.now()) {
+    if (
+      existingAction &&
+      existingAction.expiresAt > Date.now() &&
+      (await this.actionStillApplied(existingAction))
+    ) {
       existingAction.expiresAt = Date.now() + durationSeconds * 1000
       await this.saveStorage(storage)
       await this.createAlarm(`${ALARM_PREFIX}${key}`, existingAction.expiresAt)
@@ -94,7 +186,7 @@ export default class GroupDomainService {
     }
 
     if (existingAction) {
-      await this.restoreAction(key)
+      await this.restoreActionLocked(key)
       storage = await this.getStorage()
     }
 
@@ -107,17 +199,22 @@ export default class GroupDomainService {
 
     try {
       const piHoles = await PiHoleApiService.getConfiguredPiHoles()
-      for (const piHole of piHoles) {
-        const group = await PiHoleApiService.getGroup(piHole, groupName)
-        if (!group) {
-          throw new Error(`Group ${groupName} is missing on one Pi-hole`)
-        }
+      const prepared = await Promise.all(
+        piHoles.map(async (piHole) => {
+          const [group, current] = await Promise.all([
+            PiHoleApiService.getGroup(piHole, groupName),
+            PiHoleApiService.getExactDomain(piHole, ApiList.whitelist, domain),
+          ])
+          if (!group) {
+            throw new Error(
+              `Group ${groupName} is missing on ${piHole.pi_uri_base}`,
+            )
+          }
+          return { piHole, group, current }
+        }),
+      )
 
-        const current = await PiHoleApiService.getExactDomain(
-          piHole,
-          ApiList.whitelist,
-          domain,
-        )
+      for (const { piHole, group, current } of prepared) {
         if (current?.enabled && current.groups.includes(group.id)) {
           continue
         }
@@ -180,25 +277,28 @@ export default class GroupDomainService {
     }
   }
 
-  public static async cancelTemporaryAllowsForDomain(
-    domain: string,
-  ): Promise<void> {
-    const storage = await this.getStorage()
-    const matchingKeys = Object.entries(storage.actions)
-      .filter(([, action]) => action.domain === domain)
-      .map(([key]) => key)
-
-    for (const key of matchingKeys) {
-      delete storage.actions[key]
-      await this.clearAlarm(`${ALARM_PREFIX}${key}`)
+  private static async actionStillApplied(
+    action: TemporaryAction,
+  ): Promise<boolean> {
+    const piHoles = await PiHoleApiService.getConfiguredPiHoles()
+    for (const target of action.targets) {
+      const piHole = this.findPiHole(piHoles, target.pi_uri_base)
+      if (!piHole) {
+        return false
+      }
+      const current = await PiHoleApiService.getExactDomain(
+        piHole,
+        ApiList.whitelist,
+        action.domain,
+      )
+      if (!current || !this.domainsEqual(current, target.expected)) {
+        return false
+      }
     }
-
-    if (matchingKeys.length > 0) {
-      await this.saveStorage(storage)
-    }
+    return true
   }
 
-  private static async cancelTemporaryAllowForGroup(
+  private static async forgetTemporaryAllowForGroupLocked(
     domain: string,
     groupName: string,
   ): Promise<void> {
@@ -264,7 +364,50 @@ export default class GroupDomainService {
     })
   }
 
+  private static async restoreExactDomain(
+    piHole: PiHoleSettingsStorage,
+    list: ApiList,
+    domain: string,
+    original: PiHoleDomain | null,
+  ): Promise<void> {
+    const current = await PiHoleApiService.getExactDomain(piHole, list, domain)
+    if (!original) {
+      if (current) {
+        await PiHoleApiService.deleteExactDomain(piHole, list, domain)
+      }
+      return
+    }
+
+    const payload = {
+      comment: original.comment,
+      groups: [...original.groups],
+      enabled: original.enabled,
+    }
+    if (current) {
+      await PiHoleApiService.replaceExactDomain(piHole, list, domain, payload)
+    } else {
+      await PiHoleApiService.addExactDomain(piHole, list, domain, payload)
+    }
+  }
+
   private static async restoreAction(key: string): Promise<void> {
+    const initialStorage = await this.getStorage()
+    const initialAction = initialStorage.actions[key]
+    if (!initialAction) {
+      return
+    }
+
+    await OperationCoordinator.runExclusive(
+      [
+        STORAGE_KEY,
+        `domain:${initialAction.domain}`,
+        `group:${initialAction.groupName}`,
+      ],
+      () => this.restoreActionLocked(key),
+    )
+  }
+
+  private static async restoreActionLocked(key: string): Promise<void> {
     const storage = await this.getStorage()
     const action = storage.actions[key]
     if (!action) {
@@ -312,24 +455,12 @@ export default class GroupDomainService {
         }
 
         if (this.domainsEqual(current, target.expected)) {
-          if (target.original) {
-            await PiHoleApiService.replaceExactDomain(
-              piHole,
-              ApiList.whitelist,
-              action.domain,
-              {
-                comment: target.original.comment,
-                groups: target.original.groups,
-                enabled: target.original.enabled,
-              },
-            )
-          } else {
-            await PiHoleApiService.deleteExactDomain(
-              piHole,
-              ApiList.whitelist,
-              action.domain,
-            )
-          }
+          await this.restoreExactDomain(
+            piHole,
+            ApiList.whitelist,
+            action.domain,
+            target.original,
+          )
           continue
         }
 
@@ -362,15 +493,11 @@ export default class GroupDomainService {
           target.original &&
           this.numberArraysEqual(remainingGroups, target.original.groups)
         ) {
-          await PiHoleApiService.replaceExactDomain(
+          await this.restoreExactDomain(
             piHole,
             ApiList.whitelist,
             action.domain,
-            {
-              comment: target.original.comment,
-              groups: target.original.groups,
-              enabled: target.original.enabled,
-            },
+            target.original,
           )
           continue
         }
@@ -446,6 +573,15 @@ export default class GroupDomainService {
     if (!Number.isInteger(durationSeconds) || durationSeconds < 1) {
       throw new Error('Duration must be a positive number of seconds')
     }
+  }
+
+  private static toTargets(
+    piHoles: PiHoleSettingsStorage[],
+  ): MultiInstanceTarget<PiHoleSettingsStorage>[] {
+    return piHoles.map((piHole) => ({
+      address: piHole.pi_uri_base!,
+      value: piHole,
+    }))
   }
 
   private static async getStorage(): Promise<TemporaryStorage> {

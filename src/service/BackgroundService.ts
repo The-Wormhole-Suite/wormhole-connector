@@ -1,15 +1,18 @@
 import PiHoleApiStatusEnum from '../api/enum/PiHoleApiStatusEnum'
 import { BadgeService } from './BadgeService'
 import { StorageService } from './StorageService'
-import PiHoleApiService from './PiHoleApiService'
+import ConnectorApiService from './ConnectorApiService'
 import TabService from './TabService'
 import ApiList from '../api/enum/ApiList'
 import DomainStatusService from './DomainStatusService'
+import ConnectorScopeDomainService from './ConnectorScopeDomainService'
+import GroupDomainService from './GroupDomainService'
 
 export default class BackgroundService {
   public static async togglePiHole(): Promise<void> {
     try {
-      const currentStatus = await PiHoleApiService.getPiHoleStatusCombined()
+      const currentStatus =
+        await ConnectorApiService.getProtectionStatusCombined()
       if (currentStatus === PiHoleApiStatusEnum.error) {
         BadgeService.setGlobalStatus(PiHoleApiStatusEnum.error)
         return
@@ -19,9 +22,9 @@ export default class BackgroundService {
         currentStatus === PiHoleApiStatusEnum.enabled
           ? PiHoleApiStatusEnum.disabled
           : PiHoleApiStatusEnum.enabled
-      const responses = await PiHoleApiService.changePiHoleStatus(newStatus, 0)
-      if (responses.some((response) => response.data.blocking !== newStatus)) {
-        throw new Error('One Pi-hole returned an unexpected blocking state')
+      const responses = await ConnectorApiService.changeProtection(newStatus, 0)
+      if (responses.some((response) => response.blocking !== newStatus)) {
+        throw new Error('One DNS connector returned an unexpected state')
       }
 
       BadgeService.setGlobalStatus(newStatus)
@@ -43,8 +46,11 @@ export default class BackgroundService {
     }
 
     try {
-      await PiHoleApiService.subDomainFromList(ApiList.whitelist, domain)
-      await PiHoleApiService.addDomainToList(ApiList.blacklist, domain)
+      await ConnectorApiService.setDomainListGlobally(ApiList.blacklist, domain)
+      await Promise.all([
+        ConnectorScopeDomainService.cancelTemporaryAllowsForDomain(domain),
+        GroupDomainService.cancelTemporaryAllowsForDomain(domain),
+      ])
       await this.refreshBadges()
     } catch (reason) {
       console.warn(reason)
@@ -60,8 +66,11 @@ export default class BackgroundService {
     }
 
     try {
-      await PiHoleApiService.subDomainFromList(ApiList.blacklist, domain)
-      await PiHoleApiService.addDomainToList(ApiList.whitelist, domain)
+      await ConnectorApiService.setDomainListGlobally(ApiList.whitelist, domain)
+      await Promise.all([
+        ConnectorScopeDomainService.cancelTemporaryAllowsForDomain(domain),
+        GroupDomainService.cancelTemporaryAllowsForDomain(domain),
+      ])
       await this.refreshBadges()
 
       if (await StorageService.getReloadAfterWhitelist()) {
@@ -78,7 +87,7 @@ export default class BackgroundService {
   }
 
   private static async refreshBadges(): Promise<void> {
-    const status = await PiHoleApiService.getPiHoleStatusCombined()
+    const status = await ConnectorApiService.getProtectionStatusCombined()
     BadgeService.setGlobalStatus(status)
     await DomainStatusService.refreshActiveTabBadges()
   }

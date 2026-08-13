@@ -1,8 +1,8 @@
 {
 	"manifest_version": 3,
-	"name": "PiHole Browser Extension",
+	"name": "__MSG_extension_name__",
 	"version": "4.2.0",
-	"author": "Pascal Glaser",
+	"author": "HyperCriSiS",
 	"description": "__MSG_manifest_description__",
 	"default_locale": "en",
 	"icons": {
@@ -22,6 +22,9 @@
 	"background": {
 		"service_worker": "service-worker.js",
 		"type": "module"
+	},
+	"content_security_policy": {
+		"extension_pages": "script-src 'self'; object-src 'self'"
 	},
 	"host_permissions": [
 		"http://*/*",

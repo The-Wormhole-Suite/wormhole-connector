@@ -8,7 +8,10 @@ import GroupPauseService from '../../../service/GroupPauseService'
 import GroupDomainService from '../../../service/GroupDomainService'
 import DomainStatusService from '../../../service/DomainStatusService'
 import { ExtensionStorageEnum } from '../../../service/StorageService'
-import PiHoleApiService from '../../../service/PiHoleApiService'
+import ConnectorApiService from '../../../service/ConnectorApiService'
+import BrowserSyncService from '../../../service/BrowserSyncService'
+import ConnectorScopeDomainService from '../../../service/ConnectorScopeDomainService'
+import ConnectorScopePauseService from '../../../service/ConnectorScopePauseService'
 
 export default class BackgroundInitializer implements Initializer {
   private readonly ALARM_NAME = 'pihole.refreshBadges'
@@ -40,6 +43,15 @@ export default class BackgroundInitializer implements Initializer {
     GroupPauseService.initialize().catch((reason) => {
       console.error('Failed to initialize client-group pauses', reason)
     })
+    ConnectorScopeDomainService.initialize().catch((reason) => {
+      console.error('Failed to initialize scope domain actions', reason)
+    })
+    ConnectorScopePauseService.initialize().catch((reason) => {
+      console.error('Failed to initialize scope pauses', reason)
+    })
+    BrowserSyncService.initialize().catch((reason) => {
+      console.error('Failed to initialize browser synchronization', reason)
+    })
   }
 
   private async createAlarm(): Promise<void> {
@@ -68,6 +80,8 @@ export default class BackgroundInitializer implements Initializer {
         GroupPauseService.handleAlarm(alarm.name),
         GroupDomainService.handleAlarm(alarm.name),
         TemporaryActionService.handleAlarm(alarm.name),
+        ConnectorScopeDomainService.handleAlarm(alarm.name),
+        ConnectorScopePauseService.handleAlarm(alarm.name),
       ])
         .then(() => this.refreshAllIcons())
         .catch((reason) => {
@@ -110,6 +124,19 @@ export default class BackgroundInitializer implements Initializer {
 
   private addStorageListener(): void {
     chrome.storage.onChanged.addListener((changes, areaName) => {
+      if (areaName === 'sync') {
+        BrowserSyncService.handleSyncChanges(changes).catch((reason) => {
+          console.error('Failed to apply synchronized settings', reason)
+        })
+        return
+      }
+
+      if (areaName === 'local') {
+        BrowserSyncService.handleLocalChanges(changes).catch((reason) => {
+          console.error('Failed to publish synchronized settings', reason)
+        })
+      }
+
       if (
         areaName !== 'local' ||
         (!changes[ExtensionStorageEnum.pause_target] &&
@@ -129,7 +156,7 @@ export default class BackgroundInitializer implements Initializer {
   }
 
   private async refreshAllIcons(): Promise<void> {
-    const status = await PiHoleApiService.getPiHoleStatusCombined()
+    const status = await ConnectorApiService.getProtectionStatusCombined()
     BadgeService.setGlobalStatus(status)
     await DomainStatusService.refreshActiveTabIcons()
   }

@@ -50,8 +50,8 @@ jobs:
       - name: Upload Firefox package
         uses: actions/upload-artifact@v7
         with:
-          name: pihole-browser-extension-${{ steps.package.outputs.version }}-firefox-unsigned
-          path: artifacts/pihole-browser-extension-${{ steps.package.outputs.version }}-firefox-unsigned.xpi
+          name: wormhole-connector-${{ steps.package.outputs.version }}-firefox-unsigned
+          path: artifacts/wormhole-connector-${{ steps.package.outputs.version }}-firefox-unsigned.xpi
           if-no-files-found: error
           compression-level: 0
           retention-days: 14
@@ -59,8 +59,8 @@ jobs:
       - name: Upload Chrome package
         uses: actions/upload-artifact@v7
         with:
-          name: pihole-browser-extension-${{ steps.package.outputs.version }}-chrome
-          path: artifacts/pihole-browser-extension-${{ steps.package.outputs.version }}-chrome.zip
+          name: wormhole-connector-${{ steps.package.outputs.version }}-chrome
+          path: artifacts/wormhole-connector-${{ steps.package.outputs.version }}-chrome.zip
           if-no-files-found: error
           compression-level: 0
           retention-days: 14
@@ -68,7 +68,15 @@ jobs:
       - name: Upload SHA-256 checksums
         uses: actions/upload-artifact@v7
         with:
-          name: pihole-browser-extension-${{ steps.package.outputs.version }}-checksums
+          name: wormhole-connector-${{ steps.package.outputs.version }}-checksums
           path: artifacts/SHA256SUMS.txt
+          if-no-files-found: error
+          retention-days: 14
+
+      - name: Upload matching source archive
+        uses: actions/upload-artifact@v7
+        with:
+          name: wormhole-connector-${{ steps.package.outputs.version }}-source
+          path: artifacts/wormhole-connector-${{ steps.package.outputs.version }}-source.zip
           if-no-files-found: error
           retention-days: 14

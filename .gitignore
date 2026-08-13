@@ -7,6 +7,8 @@ artifacts/
 package.*.zip
 pihole-browser-extension-*.zip
 pihole-browser-extension-*.xpi
+wormhole-connector-*.zip
+wormhole-connector-*.xpi
 SHA256SUMS*.txt
 .github/release-candidate-*.json
 

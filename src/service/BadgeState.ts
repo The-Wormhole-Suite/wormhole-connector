@@ -1,4 +1,5 @@
-export type GlobalToolbarIconState = 'active' | 'disabled' | 'error' | 'unknown'
+export type GlobalToolbarIconState =
+  'active' | 'disabled' | 'mixed' | 'error' | 'unknown'
 
 export type DomainToolbarIconState =
   'allowed' | 'blocked' | 'temporary' | 'unknown'
@@ -30,6 +31,11 @@ const toolbarBadgePresentations: Record<
     backgroundColor: '#64748B',
     textColor: '#FFFFFF',
   },
+  mixed: {
+    text: 'MIX',
+    backgroundColor: '#7C3AED',
+    textColor: '#FFFFFF',
+  },
   error: {
     text: '!',
     backgroundColor: '#FACC15',
@@ -46,7 +52,11 @@ export const composeToolbarIconState = (
   globalState: GlobalToolbarIconState,
   domainState: DomainToolbarIconState,
 ): ToolbarIconState => {
-  if (globalState === 'disabled' || globalState === 'error') {
+  if (
+    globalState === 'disabled' ||
+    globalState === 'mixed' ||
+    globalState === 'error'
+  ) {
     return globalState
   }
 

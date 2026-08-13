@@ -1,7 +1,7 @@
 {
-	"name": "pihole-browser-extension",
+	"name": "wormhole-connector",
 	"version": "4.2.0",
-	"description": "Browser extension to control your PiHole. Built with Vue, Typescript and ❤",
+	"description": "Browser extension for controlling Pi-hole v6 and AdGuard Home as part of The Wormhole Suite.",
 	"engines": {
 		"node": ">=22 <25"
 	},
@@ -29,17 +29,19 @@
 		"eslint-webpack-plugin": "^6.0.0",
 		"globals": "^17.8.0",
 		"html-webpack-plugin": "^5.6.8",
+		"mini-css-extract-plugin": "^2.10.2",
 		"prettier": "3.9.6",
 		"sass": "^1.102.0",
 		"sass-loader": "^17.0.0",
-		"style-loader": "^4.0.0",
 		"ts-loader": "^9.6.2",
 		"ts-node": "^10.9.2",
 		"tsconfig-paths": "^4.2.0",
+		"tsx": "^4.23.5",
 		"typescript": "6.0.3",
 		"typescript-eslint": "^8.65.0",
 		"vue-eslint-parser": "^10.4.0",
 		"vue-loader": "^17.4.2",
+		"vue-tsc": "^3.3.9",
 		"web-ext": "10.5.0",
 		"webpack": "^5.109.2",
 		"webpack-cli": "^7.2.2",
@@ -52,39 +54,65 @@
 		"start:firefox": "cross-env TS_NODE_PROJECT=\"tsconfig-for-webpack-config.json\" webpack --mode=development --watch --progress --config src/webpack/webpack.firefox.ts",
 		"clean": "node scripts/clean.mjs",
 		"build": "npm run clean && npm run build:firefox && npm run build:chrome",
-		"build:firefox": "cross-env TS_NODE_PROJECT=\"tsconfig-for-webpack-config.json\" webpack --mode=production --progress --config src/webpack/webpack.firefox.ts",
-		"build:chrome": "cross-env TS_NODE_PROJECT=\"tsconfig-for-webpack-config.json\" webpack --mode=production --progress --config src/webpack/webpack.chrome.ts",
-		"typecheck": "tsc --noEmit --project tsconfig.json",
+		"build:firefox": "cross-env TS_NODE_PROJECT=\"tsconfig-for-webpack-config.json\" webpack --mode=production --config src/webpack/webpack.firefox.ts --stats=errors-warnings",
+		"build:chrome": "cross-env TS_NODE_PROJECT=\"tsconfig-for-webpack-config.json\" webpack --mode=production --config src/webpack/webpack.chrome.ts --stats=errors-warnings",
+		"typecheck": "npm run typecheck:ts && npm run typecheck:vue",
+		"typecheck:ts": "tsc --noEmit --project tsconfig.json",
+		"typecheck:vue": "vue-tsc --noEmit --project tsconfig.json",
 		"lint": "eslint .",
 		"eslint": "npm run lint",
-		"format:check": "prettier --check \"src/**/*.{ts,vue,css,scss,js,mjs}\" \"tests/**/*.{ts,js,mjs}\" \"scripts/**/*.{js,mjs}\"",
-		"format": "prettier --write \"src/**/*.{ts,vue,css,scss,js,mjs}\" \"tests/**/*.{ts,js,mjs}\" \"scripts/**/*.{js,mjs}\"",
+		"format:check": "prettier --check \"src/**/*.{ts,vue,css,scss,js,mjs}\" \"tests/**/*.{ts,js,mjs}\" \"scripts/**/*.{js,mjs,cjs}\"",
+		"format": "prettier --write \"src/**/*.{ts,vue,css,scss,js,mjs}\" \"tests/**/*.{ts,js,mjs}\" \"scripts/**/*.{js,mjs,cjs}\"",
 		"prettier-check": "npm run format:check",
 		"prettier-format": "npm run format",
 		"test": "node scripts/run-tests.mjs",
 		"test:domain-status": "node --experimental-strip-types --test tests/domain-status.test.ts",
 		"test:badge-state": "node --experimental-strip-types --test tests/badge-state.test.ts",
 		"test:status": "npm test",
-		"lint:firefox": "web-ext lint --source-dir dist/firefox",
+		"lint:firefox": "cross-env NO_UPDATE_NOTIFIER=1 web-ext lint --source-dir dist/firefox --warnings-as-errors --no-input",
 		"validate:packages": "node scripts/validate-packages.mjs",
+		"validate:locales": "node scripts/validate-locales.mjs",
+		"notices:generate": "node scripts/generate-third-party-notices.mjs",
+		"notices:check": "node scripts/generate-third-party-notices.mjs --check",
 		"package:artifacts": "node scripts/prepare-artifacts.mjs",
 		"verify:release": "node scripts/verify-release.mjs",
-		"check": "npm run typecheck && npm run lint && npm run format:check && npm test && npm run build && npm run lint:firefox && npm run validate:packages",
+		"check": "npm run typecheck && npm run lint && npm run format:check && npm run validate:locales && npm run notices:check && npm test && npm run build && npm run lint:firefox && npm run validate:packages && npm run audit:runtime",
+		"audit:runtime": "npm audit --omit=dev --audit-level=high",
 		"rebuild-package-lock": "npm install --package-lock-only --ignore-scripts --no-audit --no-fund"
+	},
+	"overrides": {
+		"fast-uri": "3.1.5",
+		"minimatch@>=10": {
+			"brace-expansion": "5.0.9"
+		},
+		"multimatch": {
+			"minimatch": {
+				"brace-expansion": "1.1.18"
+			}
+		},
+		"adm-zip": "0.6.0",
+		"shell-quote": "1.10.0"
 	},
 	"repository": {
 		"type": "git",
 		"url": "git+https://github.com/HyperCriSiS/pihole-browser-extension.git"
 	},
 	"keywords": [
+		"wormhole-connector",
 		"pihole",
+		"adguard-home",
+		"dns",
 		"extension",
 		"chrome",
 		"firefox",
 		"vue",
 		"typescript"
 	],
-	"author": "Pascal Glaser",
+	"author": "HyperCriSiS",
+	"contributors": [
+		"Pascal Glaser",
+		"Erik Rill"
+	],
 	"license": "MIT",
 	"bugs": {
 		"url": "https://github.com/HyperCriSiS/pihole-browser-extension/issues"

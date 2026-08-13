@@ -1,0 +1,17 @@
+Wormhole Connector
+Copyright (c) 2020 Pascal Glaser
+Copyright (c) 2026 HyperCriSiS
+
+This project is an actively maintained continuation of Pascal Glaser's
+Pi-hole Browser Extension:
+https://github.com/badsgahhl/pihole-browser-extension
+
+The source code is distributed under the MIT License in LICENSE. Bundled
+third-party software and artwork retain their own notices and licenses; see
+THIRD_PARTY_NOTICES.txt and CREDITS.md.
+
+Pi-hole is a trademark of Pi-hole, LLC. AdGuard is a trademark of Adguard
+Software Limited. Raspberry Pi is a trademark of Raspberry Pi Ltd. Wormhole
+Connector is an independent third-party project and is not developed,
+endorsed, sponsored, or supported by any of those projects.
+No trademark rights are granted by the MIT License.

@@ -2,13 +2,14 @@ import { Initializer } from '../../general/Initializer'
 import { I18NContextMenuKeys, I18NService } from '../../../service/i18NService'
 import BackgroundService from '../../../service/BackgroundService'
 import {
-  ContextMenuSwitchMessage,
-  MessageEnum,
-} from '../../../service/MessageBusService'
-import { StorageService } from '../../../service/StorageService'
+  ExtensionStorageEnum,
+  StorageService,
+} from '../../../service/StorageService'
 import CreateProperties = chrome.contextMenus.CreateProperties
 
 export default class ContextMenuInitializer implements Initializer {
+  private updateRequestId = 0
+
   private get contextMenusConfigurations(): CreateProperties[] {
     return [
       {
@@ -53,25 +54,42 @@ export default class ContextMenuInitializer implements Initializer {
   }
 
   init(): void {
-    StorageService.getDisableContextMenu().then((value) => {
-      this.removeOrCreateContextMenuByBoolean(value)
+    chrome.contextMenus.onClicked.addListener((info, tab) => {
+      const configuration = this.contextMenusConfigurations.find(
+        (_value, index) => String(index) === String(info.menuItemId),
+      )
+      configuration?.onclick?.(info, tab!)
     })
-    this.initMessageListener()
+
+    StorageService.getDisableContextMenu().then((value) => {
+      this.removeOrCreateContextMenuByBoolean(value).catch((reason) => {
+        console.error('Failed to initialize context menus', reason)
+      })
+    })
+    chrome.storage.onChanged.addListener((changes, areaName) => {
+      const change = changes[ExtensionStorageEnum.disable_context_menu]
+      if (areaName !== 'local' || !change) {
+        return
+      }
+      this.removeOrCreateContextMenuByBoolean(Boolean(change.newValue)).catch(
+        (reason) => {
+          console.error('Failed to update context menus', reason)
+        },
+      )
+    })
   }
 
-  private initMessageListener(): void {
-    chrome.runtime.onMessage.addListener(
-      (request: ContextMenuSwitchMessage) => {
-        if (request.message === MessageEnum.ContextMenuSwitch) {
-          this.removeOrCreateContextMenuByBoolean(request.payload)
-        }
-      },
-    )
-  }
-
-  private removeOrCreateContextMenuByBoolean(state: boolean): void {
-    chrome.contextMenus.removeAll()
-    if (!state) {
+  private async removeOrCreateContextMenuByBoolean(
+    state: boolean,
+  ): Promise<void> {
+    const requestId = ++this.updateRequestId
+    await new Promise<void>((resolve) => {
+      chrome.contextMenus.removeAll(() => {
+        void chrome.runtime.lastError
+        resolve()
+      })
+    })
+    if (!state && requestId === this.updateRequestId) {
       this.createContextMenu()
     }
   }
@@ -86,11 +104,5 @@ export default class ContextMenuInitializer implements Initializer {
         onclick: undefined,
       })
     }
-    chrome.contextMenus.onClicked.addListener((info, tab) => {
-      this.contextMenusConfigurations[info.menuItemId as number].onclick?.(
-        info,
-        tab!,
-      )
-    })
   }
 }

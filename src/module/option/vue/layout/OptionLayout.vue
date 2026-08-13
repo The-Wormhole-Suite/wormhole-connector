@@ -10,7 +10,7 @@
           height="44"
         />
         <div class="navigation-title text-h6">
-          PiHole<br />Browser<br />Extension
+          {{ translate('extension_name') }}
         </div>
       </div>
 
@@ -32,13 +32,6 @@
         <v-divider />
         <v-list-item
           link
-          :href="LinkConfig.paypal_donation_link"
-          target="_blank"
-          :prepend-icon="mdiGift"
-          :title="translate(I18NOptionKeys.option_donation)"
-        />
-        <v-list-item
-          link
           :href="LinkConfig.github_issue"
           target="_blank"
           :prepend-icon="mdiFire"
@@ -47,8 +40,8 @@
       </v-list>
       <template #append>
         <v-alert color="primary" variant="outlined" class="mx-5">
-          <div>(C) {{ copyrightYear }} - Pascal Glaser</div>
-          <div>(C) {{ copyrightYear }} - HyperCriSiS</div>
+          <div>Copyright 2020 Pascal Glaser</div>
+          <div>Copyright 2026 HyperCriSiS</div>
         </v-alert>
       </template>
     </v-navigation-drawer>
@@ -61,8 +54,8 @@
 </template>
 
 <script lang="ts">
-import { computed, defineComponent } from 'vue'
-import { mdiCog, mdiFire, mdiGift, mdiInformationOutline } from '@mdi/js'
+import { defineComponent } from 'vue'
+import { mdiCog, mdiFire, mdiInformationOutline } from '@mdi/js'
 import useTranslation from '../../../../hooks/translation'
 
 export default defineComponent({
@@ -70,16 +63,12 @@ export default defineComponent({
   setup: () => {
     const { translate, LinkConfig, I18NOptionKeys } = useTranslation()
 
-    const copyrightYear = computed(() => new Date().getFullYear())
-
     return {
-      copyrightYear,
       translate,
       LinkConfig,
       I18NOptionKeys,
       mdiCog,
       mdiInformationOutline,
-      mdiGift,
       mdiFire,
     }
   },
@@ -105,5 +94,6 @@ export default defineComponent({
 
 .navigation-title {
   line-height: 1.15;
+  overflow-wrap: anywhere;
 }
 </style>

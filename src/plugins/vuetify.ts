@@ -1,6 +1,33 @@
 import { createVuetify } from 'vuetify'
-import * as components from 'vuetify/components'
-import * as directives from 'vuetify/directives'
+import {
+  VAlert,
+  VApp,
+  VBtn,
+  VCard,
+  VCardActions,
+  VCardText,
+  VCardTitle,
+  VCheckbox,
+  VChip,
+  VCol,
+  VContainer,
+  VDivider,
+  VIcon,
+  VList,
+  VListItem,
+  VMain,
+  VNavigationDrawer,
+  VProgressCircular,
+  VRow,
+  VSelect,
+  VSwitch,
+  VTab,
+  VTabs,
+  VTextField,
+  VWindow,
+  VWindowItem,
+} from 'vuetify/components'
+import { Ripple } from 'vuetify/directives'
 import 'vuetify/styles'
 import { aliases, mdi } from 'vuetify/iconsets/mdi-svg'
 
@@ -18,8 +45,35 @@ const colors = {
 }
 
 const vuetify = createVuetify({
-  components,
-  directives,
+  components: {
+    VAlert,
+    VApp,
+    VBtn,
+    VCard,
+    VCardActions,
+    VCardText,
+    VCardTitle,
+    VCheckbox,
+    VChip,
+    VCol,
+    VContainer,
+    VDivider,
+    VIcon,
+    VList,
+    VListItem,
+    VMain,
+    VNavigationDrawer,
+    VProgressCircular,
+    VRow,
+    VSelect,
+    VSwitch,
+    VTab,
+    VTabs,
+    VTextField,
+    VWindow,
+    VWindowItem,
+  },
+  directives: { Ripple },
   icons: {
     defaultSet: 'mdi',
     aliases,

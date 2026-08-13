@@ -34,17 +34,20 @@ jobs:
       - name: Apply safe runtime audit fixes
         run: npm audit fix --package-lock-only --omit=dev --ignore-scripts --no-fund --audit-level=critical
 
-      - name: Commit rebuilt lockfile
+      - name: Capture runtime audit report
+        run: npm audit --omit=dev --audit-level=critical --json > audit-report.json
+
+      - name: Commit rebuilt lockfile and audit report
         shell: bash
         run: |
           set -euo pipefail
           git config user.name 'github-actions[bot]'
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
-          git add package-lock.json
+          git add package-lock.json audit-report.json
           if git diff --cached --quiet; then
-            echo 'No package-lock.json changes to commit.'
+            echo 'No dependency metadata changes to commit.'
           else
-            git commit -m 'Apply safe runtime audit fixes'
+            git commit -m 'Capture runtime audit report'
             git push origin HEAD:dev
           fi
 

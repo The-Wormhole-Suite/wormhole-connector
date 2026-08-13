@@ -1,4 +1,4 @@
-name: Refresh third-party notices
+name: Validate dependency updates and publish v4.2.0
 
 on:
   push:
@@ -9,19 +9,21 @@ on:
 
 permissions:
   contents: write
+  actions: write
 
 env:
   CI: true
 
 jobs:
-  refresh:
+  validate-and-release:
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 30
     steps:
       - name: Check out dev
         uses: actions/checkout@v7
         with:
           ref: dev
+          fetch-depth: 0
           show-progress: false
 
       - name: Set up Node.js
@@ -34,10 +36,13 @@ jobs:
       - name: Install locked dependencies
         run: npm ci --prefer-offline --no-audit --no-fund --loglevel=error
 
-      - name: Regenerate notices
+      - name: Regenerate third-party notices
         run: npm run notices:generate
 
-      - name: Commit refreshed notices and remove helper workflow
+      - name: Run complete project checks
+        run: npm run check
+
+      - name: Commit validated notices and remove helper
         shell: bash
         run: |
           set -euo pipefail
@@ -45,5 +50,25 @@ jobs:
           git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
           git rm .github/workflows/refresh-third-party-notices.yml
           git add THIRD_PARTY_NOTICES.txt
-          git commit -m 'Refresh third-party notices'
+          git commit -m 'Refresh third-party notices for v4.2.0'
           git push origin HEAD:dev
+
+      - name: Tag validated dev revision
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG='v4.2.0'
+          if git ls-remote --exit-code --tags origin "refs/tags/${TAG}" >/dev/null 2>&1; then
+            echo "Tag ${TAG} already exists." >&2
+            exit 1
+          fi
+          git tag -a "$TAG" -m 'Wormhole Connector 4.2.0'
+          git push origin "$TAG"
+
+      - name: Start existing release workflow
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          gh workflow run release.yml --repo "$GITHUB_REPOSITORY" --ref dev -f tag=v4.2.0

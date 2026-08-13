@@ -2,6 +2,7 @@
 	"name": "wormhole-connector",
 	"version": "4.2.0",
 	"description": "Browser extension for controlling Pi-hole v6 and AdGuard Home as part of The Wormhole Suite.",
+	"ciTrigger": true,
 	"engines": {
 		"node": ">=22 <25"
 	},

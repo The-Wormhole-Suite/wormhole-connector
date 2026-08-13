@@ -205,7 +205,7 @@ WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 ==============================================================================
-@babel/parser@7.29.7
+@babel/parser@7.29.8
 License: MIT
 Source: https://github.com/babel/babel
 
@@ -231,7 +231,7 @@ THE SOFTWARE.
 
 
 ==============================================================================
-@babel/types@7.29.7
+@babel/types@7.29.8
 License: MIT
 Source: https://github.com/babel/babel
 
@@ -583,7 +583,7 @@ SOFTWARE.
 
 
 ==============================================================================
-@vue/compiler-core@3.5.40
+@vue/compiler-core@3.5.41
 License: MIT
 Source: https://github.com/vuejs/core
 
@@ -611,7 +611,7 @@ THE SOFTWARE.
 
 
 ==============================================================================
-@vue/compiler-dom@3.5.40
+@vue/compiler-dom@3.5.41
 License: MIT
 Source: https://github.com/vuejs/core
 
@@ -639,7 +639,7 @@ THE SOFTWARE.
 
 
 ==============================================================================
-@vue/compiler-sfc@3.5.40
+@vue/compiler-sfc@3.5.41
 License: MIT
 Source: https://github.com/vuejs/core
 
@@ -667,7 +667,7 @@ THE SOFTWARE.
 
 
 ==============================================================================
-@vue/compiler-ssr@3.5.40
+@vue/compiler-ssr@3.5.41
 License: MIT
 Source: https://github.com/vuejs/core
 
@@ -779,7 +779,7 @@ SOFTWARE.
 
 
 ==============================================================================
-@vue/reactivity@3.5.40
+@vue/reactivity@3.5.41
 License: MIT
 Source: https://github.com/vuejs/core
 
@@ -807,7 +807,7 @@ THE SOFTWARE.
 
 
 ==============================================================================
-@vue/runtime-core@3.5.40
+@vue/runtime-core@3.5.41
 License: MIT
 Source: https://github.com/vuejs/core
 
@@ -835,7 +835,7 @@ THE SOFTWARE.
 
 
 ==============================================================================
-@vue/runtime-dom@3.5.40
+@vue/runtime-dom@3.5.41
 License: MIT
 Source: https://github.com/vuejs/core
 
@@ -863,7 +863,7 @@ THE SOFTWARE.
 
 
 ==============================================================================
-@vue/server-renderer@3.5.40
+@vue/server-renderer@3.5.41
 License: MIT
 Source: https://github.com/vuejs/core
 
@@ -891,7 +891,7 @@ THE SOFTWARE.
 
 
 ==============================================================================
-@vue/shared@3.5.40
+@vue/shared@3.5.41
 License: MIT
 Source: https://github.com/vuejs/core
 
@@ -5526,7 +5526,7 @@ OTHER DEALINGS IN THE SOFTWARE.
 
 
 ==============================================================================
-vue@3.5.40
+vue@3.5.41
 License: MIT
 Source: https://github.com/vuejs/core
 
@@ -5638,7 +5638,7 @@ THE SOFTWARE.
 
 
 ==============================================================================
-vuetify@4.1.7
+vuetify@4.1.8
 License: MIT
 Source: https://github.com/vuetifyjs/vuetify
 

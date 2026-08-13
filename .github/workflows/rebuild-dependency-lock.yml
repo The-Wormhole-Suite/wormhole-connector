@@ -1,0 +1,58 @@
+name: Rebuild dependency lock
+
+on:
+  pull_request:
+    branches:
+      - dev
+
+permissions:
+  contents: write
+
+env:
+  CI: true
+
+jobs:
+  rebuild-lock:
+    name: rebuild-lock-and-notices
+    runs-on: ubuntu-24.04
+    timeout-minutes: 30
+    steps:
+      - name: Check out dev
+        uses: actions/checkout@v7
+        with:
+          ref: dev
+          fetch-depth: 0
+          show-progress: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Rebuild package lock
+        run: npm run rebuild-package-lock
+
+      - name: Install rebuilt graph
+        run: npm ci --prefer-offline --no-audit --no-fund --loglevel=error
+
+      - name: Regenerate third-party notices
+        run: npm run notices:generate
+
+      - name: Run complete project checks
+        run: npm run check
+
+      - name: Commit validated metadata
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add package-lock.json THIRD_PARTY_NOTICES.txt
+          if git diff --cached --quiet; then
+            echo 'No dependency metadata changes to commit.'
+            exit 0
+          fi
+          git commit -m 'Rebuild dependency lock and notices'
+          git push origin HEAD:dev

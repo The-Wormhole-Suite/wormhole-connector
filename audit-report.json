@@ -1,60 +1,14 @@
 {
   "auditReportVersion": 2,
-  "vulnerabilities": {
-    "nanoid": {
-      "name": "nanoid",
-      "severity": "high",
-      "isDirect": false,
-      "via": [
-        {
-          "source": 1139427,
-          "name": "nanoid",
-          "dependency": "nanoid",
-          "title": "nanoid: custom generators can loop indefinitely when size is zero",
-          "url": "https://github.com/advisories/GHSA-2v37-7h3g-55p8",
-          "severity": "high",
-          "cwe": [
-            "CWE-835"
-          ],
-          "cvss": {
-            "score": 5.9,
-            "vectorString": "CVSS:3.1/AV:N/AC:H/PR:N/UI:N/S:U/C:N/I:N/A:H"
-          },
-          "range": "<3.3.18"
-        }
-      ],
-      "effects": [
-        "postcss"
-      ],
-      "range": "<3.3.18",
-      "nodes": [
-        "node_modules/nanoid"
-      ],
-      "fixAvailable": true
-    },
-    "postcss": {
-      "name": "postcss",
-      "severity": "high",
-      "isDirect": false,
-      "via": [
-        "nanoid"
-      ],
-      "effects": [],
-      "range": "",
-      "nodes": [
-        "node_modules/postcss"
-      ],
-      "fixAvailable": true
-    }
-  },
+  "vulnerabilities": {},
   "metadata": {
     "vulnerabilities": {
       "info": 0,
       "low": 0,
       "moderate": 0,
-      "high": 2,
+      "high": 0,
       "critical": 0,
-      "total": 2
+      "total": 0
     },
     "dependencies": {
       "prod": 168,

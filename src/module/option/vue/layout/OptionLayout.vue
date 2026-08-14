@@ -15,19 +15,36 @@
 
         <div class="sidebar-divider"></div>
 
-        <nav class="navigation" :aria-label="translate(I18NOptionKeys.options_settings)">
-          <router-link class="nav-item" active-class="nav-item--active" exact-active-class="nav-item--active" to="/">
+        <nav
+          class="navigation"
+          :aria-label="translate(I18NOptionKeys.options_settings)"
+        >
+          <router-link
+            class="nav-item"
+            active-class="nav-item--active"
+            exact-active-class="nav-item--active"
+            to="/"
+          >
             <v-icon :icon="mdiCog" />
             <span>{{ translate(I18NOptionKeys.options_settings) }}</span>
             <span class="nav-indicator"></span>
           </router-link>
-          <router-link class="nav-item" active-class="nav-item--active" to="/about">
+          <router-link
+            class="nav-item"
+            active-class="nav-item--active"
+            to="/about"
+          >
             <v-icon :icon="mdiInformationOutline" />
             <span>{{ translate(I18NOptionKeys.options_about) }}</span>
             <span class="nav-indicator"></span>
           </router-link>
           <div class="nav-separator"></div>
-          <a class="nav-item" :href="LinkConfig.github_issue" target="_blank" rel="noreferrer">
+          <a
+            class="nav-item"
+            :href="LinkConfig.github_issue"
+            target="_blank"
+            rel="noreferrer"
+          >
             <v-icon :icon="mdiFire" />
             <span>{{ translate(I18NOptionKeys.option_troubleshooting) }}</span>
           </a>
@@ -56,7 +73,9 @@ export default defineComponent({
   name: 'OptionComponent',
   setup: () => {
     const { translate, LinkConfig, I18NOptionKeys } = useTranslation()
-    const extensionVersion = computed(() => chrome.runtime.getManifest().version)
+    const extensionVersion = computed(
+      () => chrome.runtime.getManifest().version,
+    )
 
     return {
       extensionVersion,

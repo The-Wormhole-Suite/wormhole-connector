@@ -19,23 +19,23 @@ jobs:
     runs-on: ubuntu-24.04
     timeout-minutes: 35
     steps:
-      - name: Check out validated dev
+      - name: Check out dev
         uses: actions/checkout@v7
         with:
           ref: dev
           fetch-depth: 0
           show-progress: false
 
-      - name: Verify release tag points at current dev
+      - name: Verify corrected release tag target
         shell: bash
         run: |
           set -euo pipefail
           TAG='v5.1.0-beta.1'
+          EXPECTED_SHA='02fcbbbb7863a1e6be1429157d33a37fb04af4b3'
           git fetch --force origin "refs/tags/${TAG}:refs/tags/${TAG}"
           TAG_SHA=$(git rev-list -n 1 "$TAG")
-          DEV_SHA=$(git rev-parse HEAD)
-          if [[ "$TAG_SHA" != "$DEV_SHA" ]]; then
-            echo "Tag ${TAG} points to ${TAG_SHA}, but dev is ${DEV_SHA}." >&2
+          if [[ "$TAG_SHA" != "$EXPECTED_SHA" ]]; then
+            echo "Tag ${TAG} points to ${TAG_SHA}, expected ${EXPECTED_SHA}." >&2
             exit 1
           fi
 

@@ -72,6 +72,14 @@
             >HyperCriSiS</a
           >
         </div>
+        <a
+          class="source-link"
+          href="https://github.com/badsgahhl/pihole-browser-extension"
+          target="_blank"
+          rel="noreferrer"
+        >
+          Ursprüngliches Projekt
+        </a>
       </article>
     </section>
 

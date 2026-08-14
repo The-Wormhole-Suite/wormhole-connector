@@ -1,0 +1,105 @@
+html,
+body {
+  min-width: 320px;
+  background:
+    radial-gradient(circle at 8% 0%, rgba(42, 126, 255, 0.22), transparent 42%),
+    radial-gradient(circle at 95% 20%, rgba(126, 74, 255, 0.16), transparent 38%),
+    rgb(var(--v-theme-background)) !important;
+}
+
+#popup {
+  width: 320px;
+  min-height: 0;
+  background: transparent !important;
+}
+
+#popup .popup-shell {
+  width: 100%;
+  background: rgba(var(--v-theme-surface), 0.72) !important;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.1) !important;
+  box-shadow: inset 0 1px 0 rgba(255, 255, 255, 0.05) !important;
+  backdrop-filter: blur(24px) saturate(135%);
+  -webkit-backdrop-filter: blur(24px) saturate(135%);
+}
+
+#popup .v-card,
+#popup .v-alert,
+#popup .v-field {
+  background: rgba(var(--v-theme-surface), 0.64) !important;
+  border: 1px solid rgba(var(--v-theme-on-surface), 0.09) !important;
+  box-shadow: none !important;
+  backdrop-filter: blur(16px) saturate(125%);
+  -webkit-backdrop-filter: blur(16px) saturate(125%);
+}
+
+#popup .v-card,
+#popup .v-alert {
+  border-radius: 12px !important;
+}
+
+#popup .v-divider {
+  opacity: 0.38 !important;
+}
+
+#popup .popup-content {
+  padding: 0 10px 8px !important;
+}
+
+#popup .popup-header {
+  min-height: 40px !important;
+  padding: 6px 9px 5px 10px !important;
+}
+
+#popup .popup-status-icon {
+  width: 48px !important;
+  height: 48px !important;
+  margin-top: 8px !important;
+  filter: drop-shadow(0 0 11px rgba(91, 173, 255, 0.22));
+}
+
+#popup .section-heading-row {
+  min-height: 22px;
+  margin-bottom: 6px;
+}
+
+#popup .section-title,
+#popup .global-control .control-label {
+  font-size: 14px !important;
+  font-weight: 600 !important;
+  line-height: 1.3 !important;
+}
+
+#popup .domain-status {
+  font-size: 10px !important;
+  line-height: 1.2 !important;
+}
+
+#popup .domain-display {
+  font-size: 12px !important;
+  line-height: 1.35 !important;
+}
+
+#popup .group-control .control-label,
+#popup .temporary-heading,
+#popup .timer-label,
+#popup .domain-action,
+#popup .timer-button {
+  font-size: 12px !important;
+  line-height: 1.3 !important;
+}
+
+#popup .group-select {
+  --v-input-control-height: 36px;
+}
+
+#popup .group-select .v-field-label {
+  display: none !important;
+}
+
+#popup .group-select .v-field__input {
+  min-height: 36px !important;
+  padding-top: 0 !important;
+  padding-bottom: 0 !important;
+  font-size: 12px !important;
+  line-height: 1.3 !important;
+}

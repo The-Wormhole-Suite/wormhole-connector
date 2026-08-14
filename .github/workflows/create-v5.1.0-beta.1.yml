@@ -1,0 +1,41 @@
+name: Create v5.1.0-beta.1
+
+on:
+  push:
+    branches:
+      - chore/release-v5.1.0-beta.1
+
+permissions:
+  contents: write
+  actions: write
+
+jobs:
+  release:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Check out helper branch
+        uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - name: Tag current dev revision
+        shell: bash
+        run: |
+          set -euo pipefail
+          git fetch origin dev --tags
+          if git rev-parse -q --verify refs/tags/v5.1.0-beta.1 >/dev/null; then
+            echo "Tag v5.1.0-beta.1 already exists." >&2
+            exit 1
+          fi
+          git tag -a v5.1.0-beta.1 origin/dev -m "Wormhole Connector v5.1.0-beta.1"
+          git push origin refs/tags/v5.1.0-beta.1
+
+      - name: Dispatch release workflow
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh workflow run release.yml \
+            --repo "$GITHUB_REPOSITORY" \
+            --ref dev \
+            -f tag=v5.1.0-beta.1

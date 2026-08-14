@@ -1,0 +1,46 @@
+name: Clean stale v5.1.0-beta.1 draft
+
+on:
+  push:
+    branches:
+      - dev
+    paths:
+      - '.github/workflows/cleanup-stale-v5.1.0-beta.1-draft.yml'
+
+permissions:
+  contents: write
+
+env:
+  GH_TOKEN: ${{ github.token }}
+
+jobs:
+  cleanup:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - name: Check out dev
+        uses: actions/checkout@v7
+        with:
+          ref: dev
+          fetch-depth: 0
+          show-progress: false
+
+      - name: Delete stale untagged draft
+        shell: bash
+        run: |
+          set -euo pipefail
+          RELEASE_ID='370274768'
+          RELEASE_JSON=$(gh api "repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}")
+          [[ "$(jq -r '.draft' <<<"$RELEASE_JSON")" == 'true' ]]
+          [[ "$(jq -r '.tag_name' <<<"$RELEASE_JSON")" == untagged-* ]]
+          gh api --method DELETE "repos/${GITHUB_REPOSITORY}/releases/${RELEASE_ID}"
+
+      - name: Remove one-time cleanup workflow
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm .github/workflows/cleanup-stale-v5.1.0-beta.1-draft.yml
+          git commit -m 'Remove stale v5.1.0-beta.1 release draft'
+          git push origin HEAD:dev

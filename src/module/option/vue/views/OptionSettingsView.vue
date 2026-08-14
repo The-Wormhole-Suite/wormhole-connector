@@ -20,7 +20,9 @@
         <div>
           <span class="section-index">01</span>
           <h2>{{ translate(I18NOptionKeys.options_headline_info) }}</h2>
-          <p>{{ translate(I18NOptionKeys.options_headline_additional_info) }}</p>
+          <p>
+            {{ translate(I18NOptionKeys.options_headline_additional_info) }}
+          </p>
         </div>
       </div>
       <OptionTabComponent />
@@ -32,7 +34,9 @@
       <div class="card-heading card-heading--compact">
         <div>
           <span class="section-index">04</span>
-          <h2>{{ translate(I18NOptionKeys.option_settings_general_settings) }}</h2>
+          <h2>
+            {{ translate(I18NOptionKeys.option_settings_general_settings) }}
+          </h2>
           <p>Automatisierung und Integrationen des Connectors.</p>
         </div>
       </div>

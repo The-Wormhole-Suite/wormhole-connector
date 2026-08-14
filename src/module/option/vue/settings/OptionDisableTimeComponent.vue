@@ -27,7 +27,9 @@
       <div class="toggle-list">
         <v-checkbox
           v-model="hideGroupSelectorInPopup"
-          :label="translate(I18NOptionKeys.options_hide_group_selector_in_popup)"
+          :label="
+            translate(I18NOptionKeys.options_hide_group_selector_in_popup)
+          "
           hide-details
         ></v-checkbox>
         <v-checkbox
@@ -56,7 +58,9 @@
 
       <div class="setting-section">
         <div class="setting-label">
-          <strong>{{ translate(I18NOptionKeys.options_group_pause_times_title) }}</strong>
+          <strong>{{
+            translate(I18NOptionKeys.options_group_pause_times_title)
+          }}</strong>
           <span>{{ translate(I18NOptionKeys.options_default_time_unit) }}</span>
         </div>
         <v-row>
@@ -83,7 +87,9 @@
 
       <div class="setting-section">
         <div class="setting-label">
-          <strong>{{ translate(I18NOptionKeys.options_temporary_allow_times_title) }}</strong>
+          <strong>{{
+            translate(I18NOptionKeys.options_temporary_allow_times_title)
+          }}</strong>
           <span>{{ translate(I18NOptionKeys.options_default_time_unit) }}</span>
         </div>
         <v-row>

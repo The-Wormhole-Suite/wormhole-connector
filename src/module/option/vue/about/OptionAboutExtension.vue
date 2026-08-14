@@ -22,14 +22,29 @@
           <div>
             <span class="section-index">01</span>
             <h2>Projekt</h2>
-            <p>Die aktuelle Produktidentität steht vollständig unter The Wormhole Suite.</p>
+            <p>
+              Die aktuelle Produktidentität steht vollständig unter The Wormhole
+              Suite.
+            </p>
           </div>
         </div>
         <dl class="info-list">
-          <div><dt>Produkt</dt><dd>Wormhole Connector</dd></div>
-          <div><dt>Suite</dt><dd>The Wormhole Suite</dd></div>
-          <div><dt>Leitsatz</dt><dd>Domains demystified</dd></div>
-          <div><dt>Release-Kanal</dt><dd>Dev · Prerelease</dd></div>
+          <div>
+            <dt>Produkt</dt>
+            <dd>Wormhole Connector</dd>
+          </div>
+          <div>
+            <dt>Suite</dt>
+            <dd>The Wormhole Suite</dd>
+          </div>
+          <div>
+            <dt>Leitsatz</dt>
+            <dd>Domains demystified</dd>
+          </div>
+          <div>
+            <dt>Release-Kanal</dt>
+            <dd>Dev · Prerelease</dd>
+          </div>
         </dl>
       </article>
 
@@ -47,9 +62,15 @@
           <strong>Pascal Glaser (badsgahhl)</strong>.
         </p>
         <div class="credit-links">
-          <a :href="LinkConfig.github_user_badsgahhl" target="_blank">Pascal Glaser</a>
-          <a :href="LinkConfig.github_user_limitationz" target="_blank">Erik Rill</a>
-          <a :href="LinkConfig.github_user_hypercrisis" target="_blank">HyperCriSiS</a>
+          <a :href="LinkConfig.github_user_badsgahhl" target="_blank"
+            >Pascal Glaser</a
+          >
+          <a :href="LinkConfig.github_user_limitationz" target="_blank"
+            >Erik Rill</a
+          >
+          <a :href="LinkConfig.github_user_hypercrisis" target="_blank"
+            >HyperCriSiS</a
+          >
         </div>
       </article>
     </section>
@@ -59,12 +80,18 @@
         <div>
           <span class="section-index">03</span>
           <h2>Lizenz &amp; Quellcode</h2>
-          <p>Transparente Open-Source-Herkunft ohne Fremdbranding in der Bedienoberfläche.</p>
+          <p>
+            Transparente Open-Source-Herkunft ohne Fremdbranding in der
+            Bedienoberfläche.
+          </p>
         </div>
       </div>
       <div class="license-row">
         <div class="license-badge glass-chip">MIT</div>
-        <p>Die Lizenz- und Copyright-Hinweise verbleiben in den vorgesehenen Projekt- und Lizenzdateien.</p>
+        <p>
+          Die Lizenz- und Copyright-Hinweise verbleiben in den vorgesehenen
+          Projekt- und Lizenzdateien.
+        </p>
       </div>
     </section>
   </div>

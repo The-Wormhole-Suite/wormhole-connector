@@ -4,7 +4,9 @@
       <div>
         <div class="eyebrow">ABOUT THE CONNECTOR</div>
         <h1>{{ translate(I18NOptionKeys.options_about) }}</h1>
-        <p>Projektinformationen, Version und Herkunft des Open-Source-Projekts.</p>
+        <p>
+          Projektinformationen, Version und Herkunft des Open-Source-Projekts.
+        </p>
       </div>
       <div class="header-status glass-chip">
         <span class="brand-mini" aria-hidden="true"></span>

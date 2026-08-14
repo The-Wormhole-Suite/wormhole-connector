@@ -1,60 +1,54 @@
 <template>
-  <v-app>
-    <v-navigation-drawer>
-      <div class="navigation-header">
-        <img
-          class="navigation-logo"
-          src="icon/icon-128.png"
-          alt=""
-          width="44"
-          height="44"
-        />
-        <div class="navigation-title text-h6">
-          {{ translate('extension_name') }}
+  <v-app class="wormhole-app">
+    <div class="app-shell">
+      <aside class="sidebar glass-panel">
+        <div class="brand">
+          <div class="brand-mark" aria-hidden="true">
+            <span class="brand-mark__ring"></span>
+            <span class="brand-mark__core"></span>
+          </div>
+          <div class="brand-copy">
+            <span class="suite-name">THE WORMHOLE SUITE</span>
+            <strong>Wormhole<br />Connector</strong>
+          </div>
         </div>
-      </div>
 
-      <v-divider></v-divider>
+        <div class="sidebar-divider"></div>
 
-      <v-list density="compact" nav>
-        <v-list-item
-          link
-          to="/"
-          :prepend-icon="mdiCog"
-          :title="translate(I18NOptionKeys.options_settings)"
-        />
-        <v-list-item
-          link
-          to="/about"
-          :prepend-icon="mdiInformationOutline"
-          :title="translate(I18NOptionKeys.options_about)"
-        />
-        <v-divider />
-        <v-list-item
-          link
-          :href="LinkConfig.github_issue"
-          target="_blank"
-          :prepend-icon="mdiFire"
-          :title="translate(I18NOptionKeys.option_troubleshooting)"
-        />
-      </v-list>
-      <template #append>
-        <v-alert color="primary" variant="outlined" class="mx-5">
-          <div>Copyright 2020 Pascal Glaser</div>
-          <div>Copyright 2026 HyperCriSiS</div>
-        </v-alert>
-      </template>
-    </v-navigation-drawer>
-    <v-main>
-      <v-container fluid style="max-width: 1440px">
+        <nav class="navigation" :aria-label="translate(I18NOptionKeys.options_settings)">
+          <router-link class="nav-item" active-class="nav-item--active" exact-active-class="nav-item--active" to="/">
+            <v-icon :icon="mdiCog" />
+            <span>{{ translate(I18NOptionKeys.options_settings) }}</span>
+            <span class="nav-indicator"></span>
+          </router-link>
+          <router-link class="nav-item" active-class="nav-item--active" to="/about">
+            <v-icon :icon="mdiInformationOutline" />
+            <span>{{ translate(I18NOptionKeys.options_about) }}</span>
+            <span class="nav-indicator"></span>
+          </router-link>
+          <div class="nav-separator"></div>
+          <a class="nav-item" :href="LinkConfig.github_issue" target="_blank" rel="noreferrer">
+            <v-icon :icon="mdiFire" />
+            <span>{{ translate(I18NOptionKeys.option_troubleshooting) }}</span>
+          </a>
+        </nav>
+
+        <div class="sidebar-footer">
+          <span class="build-label">WORMHOLE CONNECTOR</span>
+          <span>v{{ extensionVersion }} · Dev Prerelease</span>
+          <span>THE WORMHOLE SUITE</span>
+        </div>
+      </aside>
+
+      <main class="main-content">
         <router-view></router-view>
-      </v-container>
-    </v-main>
+      </main>
+    </div>
   </v-app>
 </template>
 
 <script lang="ts">
-import { defineComponent } from 'vue'
+import { computed, defineComponent } from 'vue'
 import { mdiCog, mdiFire, mdiInformationOutline } from '@mdi/js'
 import useTranslation from '../../../../hooks/translation'
 
@@ -62,8 +56,10 @@ export default defineComponent({
   name: 'OptionComponent',
   setup: () => {
     const { translate, LinkConfig, I18NOptionKeys } = useTranslation()
+    const extensionVersion = computed(() => chrome.runtime.getManifest().version)
 
     return {
+      extensionVersion,
       translate,
       LinkConfig,
       I18NOptionKeys,
@@ -74,26 +70,3 @@ export default defineComponent({
   },
 })
 </script>
-
-<style scoped lang="scss">
-.navigation-logo {
-  display: block;
-  width: 44px;
-  height: 44px;
-  object-fit: contain;
-}
-
-.navigation-header {
-  display: grid;
-  grid-template-columns: 44px minmax(0, 1fr);
-  align-items: center;
-  column-gap: 12px;
-  min-height: 76px;
-  padding: 12px 12px 12px 16px;
-}
-
-.navigation-title {
-  line-height: 1.15;
-  overflow-wrap: anywhere;
-}
-</style>

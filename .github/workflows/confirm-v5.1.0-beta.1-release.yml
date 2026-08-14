@@ -1,0 +1,101 @@
+name: Confirm v5.1.0-beta.1 release
+
+on:
+  push:
+    branches:
+      - dev
+    paths:
+      - '.github/workflows/confirm-v5.1.0-beta.1-release.yml'
+
+permissions:
+  contents: write
+  actions: write
+
+env:
+  CI: true
+
+jobs:
+  confirm-release:
+    runs-on: ubuntu-24.04
+    timeout-minutes: 35
+    steps:
+      - name: Check out validated dev
+        uses: actions/checkout@v7
+        with:
+          ref: dev
+          fetch-depth: 0
+          show-progress: false
+
+      - name: Verify release tag points at current dev
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG='v5.1.0-beta.1'
+          git fetch --force origin "refs/tags/${TAG}:refs/tags/${TAG}"
+          TAG_SHA=$(git rev-list -n 1 "$TAG")
+          DEV_SHA=$(git rev-parse HEAD)
+          if [[ "$TAG_SHA" != "$DEV_SHA" ]]; then
+            echo "Tag ${TAG} points to ${TAG_SHA}, but dev is ${DEV_SHA}." >&2
+            exit 1
+          fi
+
+      - name: Dispatch and wait for release workflow
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG='v5.1.0-beta.1'
+          BEFORE=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow release.yml --event workflow_dispatch --limit 1 --json databaseId --jq '.[0].databaseId // empty')
+          gh workflow run release.yml --repo "$GITHUB_REPOSITORY" --ref dev -f tag="$TAG"
+
+          RUN_ID=''
+          for _ in $(seq 1 12); do
+            CURRENT=$(gh run list --repo "$GITHUB_REPOSITORY" --workflow release.yml --event workflow_dispatch --limit 1 --json databaseId --jq '.[0].databaseId // empty')
+            if [[ -n "$CURRENT" && "$CURRENT" != "$BEFORE" ]]; then
+              RUN_ID="$CURRENT"
+              break
+            fi
+            sleep 5
+          done
+
+          if [[ -z "$RUN_ID" ]]; then
+            echo 'Could not resolve the newly dispatched release workflow run.' >&2
+            exit 1
+          fi
+
+          echo "Watching release run ${RUN_ID}."
+          gh run watch "$RUN_ID" --repo "$GITHUB_REPOSITORY" --exit-status
+
+      - name: Verify published prerelease and assets
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG='v5.1.0-beta.1'
+          RELEASE_JSON=$(gh release view "$TAG" --repo "$GITHUB_REPOSITORY" --json isDraft,isPrerelease,tagName,assets,url)
+
+          [[ "$(jq -r '.isDraft' <<<"$RELEASE_JSON")" == 'false' ]]
+          [[ "$(jq -r '.isPrerelease' <<<"$RELEASE_JSON")" == 'true' ]]
+          [[ "$(jq -r '.tagName' <<<"$RELEASE_JSON")" == "$TAG" ]]
+
+          for ASSET in \
+            'wormhole-connector-5.1.0-beta.1-firefox-unsigned.xpi' \
+            'wormhole-connector-5.1.0-beta.1-chrome.zip' \
+            'wormhole-connector-5.1.0-beta.1-source.zip' \
+            'SHA256SUMS.txt'; do
+            jq -e --arg asset "$ASSET" '.assets | any(.name == $asset)' <<<"$RELEASE_JSON" >/dev/null
+          done
+
+          gh release view "$TAG" --repo "$GITHUB_REPOSITORY"
+
+      - name: Remove one-time release verifier
+        shell: bash
+        run: |
+          set -euo pipefail
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm .github/workflows/confirm-v5.1.0-beta.1-release.yml
+          git commit -m 'Confirm Wormhole Connector v5.1.0-beta.1 release'
+          git push origin HEAD:dev

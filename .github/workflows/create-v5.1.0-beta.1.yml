@@ -1,43 +1,69 @@
-name: Create v5.1.0-beta.1
+# One-time release correction and validation trigger
+name: Validate GUI preview and republish v5.1.0-beta.1
 
 on:
   push:
     branches:
-      - chore/release-v5.1.0-beta.1
+      - dev
+    paths:
+      - '.github/workflows/create-v5.1.0-beta.1.yml'
 
 permissions:
   contents: write
   actions: write
 
+env:
+  CI: true
+
 jobs:
-  release:
+  validate-and-release:
     runs-on: ubuntu-24.04
-    timeout-minutes: 10
+    timeout-minutes: 30
     steps:
-      - name: Check out helper branch
+      - name: Check out dev
         uses: actions/checkout@v7
         with:
+          ref: dev
           fetch-depth: 0
+          show-progress: false
 
-      - name: Point tag at merged GUI revision
+      - name: Set up Node.js
+        uses: actions/setup-node@v7
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install locked dependencies
+        run: npm ci --prefer-offline --no-audit --no-fund --loglevel=error
+
+      - name: Run complete project checks
+        run: npm run check
+
+      - name: Remove helper from validated dev
         shell: bash
         run: |
           set -euo pipefail
-          git fetch origin +refs/heads/dev:refs/remotes/origin/dev --tags
-          DEV_SHA=$(git rev-parse refs/remotes/origin/dev)
-          EXPECTED_SHA=c10c9266bfa2915e28d41eddae101468efa0739c
-          if [[ "$DEV_SHA" != "$EXPECTED_SHA" ]]; then
-            echo "Expected dev at ${EXPECTED_SHA}, got ${DEV_SHA}." >&2
-            exit 1
-          fi
-          git tag -fa v5.1.0-beta.1 "$DEV_SHA" -m "Wormhole Connector v5.1.0-beta.1"
-          git push --force origin refs/tags/v5.1.0-beta.1
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git rm .github/workflows/create-v5.1.0-beta.1.yml
+          git commit -m 'Finalize Wormhole Connector v5.1.0-beta.1'
+          git push origin HEAD:dev
 
-      - name: Dispatch release workflow
+      - name: Correct release tag
+        shell: bash
+        run: |
+          set -euo pipefail
+          TAG='v5.1.0-beta.1'
+          git tag -d "$TAG" >/dev/null 2>&1 || true
+          git push origin ":refs/tags/${TAG}" >/dev/null 2>&1 || true
+          git tag -a "$TAG" -m 'Wormhole Connector 5.1.0-beta.1'
+          git push origin "$TAG"
+
+      - name: Rebuild existing release from corrected tag
         env:
           GH_TOKEN: ${{ github.token }}
+        shell: bash
         run: |
-          gh workflow run release.yml \
-            --repo "$GITHUB_REPOSITORY" \
-            --ref dev \
-            -f tag=v5.1.0-beta.1
+          set -euo pipefail
+          gh workflow run release.yml --repo "$GITHUB_REPOSITORY" --ref dev -f tag=v5.1.0-beta.1

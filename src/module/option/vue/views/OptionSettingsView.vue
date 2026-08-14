@@ -1,26 +1,47 @@
 <template>
-  <div>
-    <h1 class="mb-5">
-      {{ translate(I18NOptionKeys.options_settings) }}
-    </h1>
-    <v-card class="mb-5">
-      <v-card-title>
-        {{ translate(I18NOptionKeys.options_headline_info) }}
-      </v-card-title>
-      <v-card-text style="min-height: 525px">
-        <v-alert variant="outlined" type="info">
-          {{ translate(I18NOptionKeys.options_headline_additional_info) }}
-        </v-alert>
-        <OptionTabComponent class="mb-5" />
-      </v-card-text>
-    </v-card>
-    <v-card>
-      <v-card-title>
-        {{ translate(I18NOptionKeys.option_settings_general_settings) }}
-      </v-card-title>
-      <v-card-text>
-        <OptionDisableTimeComponent />
+  <div class="wormhole-view settings-view">
+    <header class="page-header">
+      <div>
+        <div class="eyebrow">CONTROL INTERFACE</div>
+        <h1>{{ translate(I18NOptionKeys.options_settings) }}</h1>
+        <p>{{ translate(I18NOptionKeys.options_headline_additional_info) }}</p>
+      </div>
+      <div class="header-status glass-chip">
+        <span class="status-dot"></span>
+        <div>
+          <strong>Wormhole Connector</strong>
+          <span>v{{ extensionVersion }}</span>
+        </div>
+      </div>
+    </header>
 
+    <v-card class="card glass-panel connection-card">
+      <div class="card-heading">
+        <div>
+          <span class="section-index">01</span>
+          <h2>{{ translate(I18NOptionKeys.options_headline_info) }}</h2>
+          <p>
+            {{ translate(I18NOptionKeys.options_headline_additional_info) }}
+          </p>
+        </div>
+      </div>
+      <OptionTabComponent />
+    </v-card>
+
+    <OptionDisableTimeComponent />
+
+    <v-card class="card glass-panel behavior-card">
+      <div class="card-heading card-heading--compact">
+        <div>
+          <span class="section-index">04</span>
+          <h2>
+            {{ translate(I18NOptionKeys.option_settings_general_settings) }}
+          </h2>
+          <p>Automatisierung und Integrationen des Connectors.</p>
+        </div>
+      </div>
+
+      <div class="behavior-grid">
         <OptionCheckboxComponent
           v-for="(item, i) in checkboxOptions"
           :key="i"
@@ -28,13 +49,28 @@
           :label-text-key="item.labelTextKey"
           :setter-function="item.setterFunction"
         />
+      </div>
 
-        <v-btn v-if="!isFirefox" class="mt-3" @click="openHotKeySettings">
-          {{ translate(I18NOptionKeys.option_hotkey_settings) }}
-        </v-btn>
-      </v-card-text>
+      <v-btn v-if="!isFirefox" class="mt-5" @click="openHotKeySettings">
+        {{ translate(I18NOptionKeys.option_hotkey_settings) }}
+      </v-btn>
     </v-card>
-    <OptionBackupSyncComponent class="mt-5" />
+
+    <div class="backup-section">
+      <div class="card-heading card-heading--compact backup-heading">
+        <div>
+          <span class="section-index">05</span>
+          <h2>{{ translate(I18NOptionKeys.options_backup_sync_title) }}</h2>
+        </div>
+      </div>
+      <OptionBackupSyncComponent />
+    </div>
+
+    <footer class="page-footer">
+      <span>Wormhole Connector</span>
+      <span class="footer-line"></span>
+      <span>Domains demystified</span>
+    </footer>
   </div>
 </template>
 
@@ -58,6 +94,9 @@ export default defineComponent({
   },
   setup: () => {
     const { translate } = useTranslation()
+    const extensionVersion = computed(
+      () => chrome.runtime.getManifest().version,
+    )
 
     const checkboxOptions: GenericCheckboxComponent[] = [
       {
@@ -95,6 +134,7 @@ export default defineComponent({
     }
 
     return {
+      extensionVersion,
       openHotKeySettings,
       isFirefox,
       checkboxOptions,
@@ -104,9 +144,6 @@ export default defineComponent({
   },
 })
 
-/**
- * Interface that represents a checkbox option in the settings
- */
 interface GenericCheckboxComponent {
   labelTextKey: I18NOptionKeys
   getterFunction: () => Promise<boolean | undefined> | Promise<boolean>

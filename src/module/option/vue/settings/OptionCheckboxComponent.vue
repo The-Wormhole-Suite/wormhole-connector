@@ -1,6 +1,11 @@
 <template>
-  <v-switch v-model="isChecked" inset :label="translate(labelTextKey)">
-  </v-switch>
+  <v-switch
+    v-model="isChecked"
+    class="boxed-setting"
+    inset
+    :label="translate(labelTextKey)"
+    hide-details
+  ></v-switch>
 </template>
 
 <script lang="ts">

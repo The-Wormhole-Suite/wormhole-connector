@@ -19,17 +19,19 @@ jobs:
         with:
           fetch-depth: 0
 
-      - name: Tag current dev revision
+      - name: Point tag at merged GUI revision
         shell: bash
         run: |
           set -euo pipefail
-          git fetch origin dev --tags
-          if git rev-parse -q --verify refs/tags/v5.1.0-beta.1 >/dev/null; then
-            echo "Tag v5.1.0-beta.1 already exists." >&2
+          git fetch origin +refs/heads/dev:refs/remotes/origin/dev --tags
+          DEV_SHA=$(git rev-parse refs/remotes/origin/dev)
+          EXPECTED_SHA=c10c9266bfa2915e28d41eddae101468efa0739c
+          if [[ "$DEV_SHA" != "$EXPECTED_SHA" ]]; then
+            echo "Expected dev at ${EXPECTED_SHA}, got ${DEV_SHA}." >&2
             exit 1
           fi
-          git tag -a v5.1.0-beta.1 origin/dev -m "Wormhole Connector v5.1.0-beta.1"
-          git push origin refs/tags/v5.1.0-beta.1
+          git tag -fa v5.1.0-beta.1 "$DEV_SHA" -m "Wormhole Connector v5.1.0-beta.1"
+          git push --force origin refs/tags/v5.1.0-beta.1
 
       - name: Dispatch release workflow
         env:

@@ -128,4 +128,4 @@ jobs:
           done
           gh release view "$TAG" --repo "$GITHUB_REPOSITORY"
 
-# trigger after workflow registration
+# trigger via PR after workflow registration

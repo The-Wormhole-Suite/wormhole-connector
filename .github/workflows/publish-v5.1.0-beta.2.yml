@@ -127,3 +127,5 @@ jobs:
             jq -e --arg asset "$ASSET" '.assets | any(.name == $asset)' <<<"$RELEASE_JSON" >/dev/null
           done
           gh release view "$TAG" --repo "$GITHUB_REPOSITORY"
+
+# trigger after workflow registration

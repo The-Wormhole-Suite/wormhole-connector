@@ -96,7 +96,7 @@
 	},
 	"repository": {
 		"type": "git",
-		"url": "git+https://github.com/HyperCriSiS/pihole-browser-extension.git"
+		"url": "git+https://github.com/The-Wormhole-Suite/wormhole-connector.git"
 	},
 	"keywords": [
 		"wormhole-connector",
@@ -116,7 +116,7 @@
 	],
 	"license": "MIT",
 	"bugs": {
-		"url": "https://github.com/HyperCriSiS/pihole-browser-extension/issues"
+		"url": "https://github.com/The-Wormhole-Suite/wormhole-connector/issues"
 	},
-	"homepage": "https://github.com/HyperCriSiS/pihole-browser-extension#readme"
+	"homepage": "https://github.com/The-Wormhole-Suite/wormhole-connector#readme"
 }

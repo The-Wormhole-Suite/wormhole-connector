@@ -39,7 +39,7 @@ The original project is now in maintenance mode. Since I use the extension exten
 
 ### Customization and shortcuts
 
-- Keep the extension logo recognizable and show active, blocked, temporarily allowed, disabled and error/unknown states through a compact, color-coded toolbar marker.
+- Keep the extension logo recognizable and show active, blocked, temporarily allowed, disabled and error/unknown states through a native, color-coded toolbar badge.
 - Configure the three presets used for temporary domain whitelisting and group pauses.
 - Hide the client-group selector or individual action sections from the popup.
 - Use keyboard shortcuts and browser context-menu actions.
@@ -48,15 +48,15 @@ The original project is now in maintenance mode. Since I use the extension exten
 
 ### Toolbar status
 
-The extension uses a large, shield-free main logo and a small integrated corner marker for status information. Unlike native browser badges, the marker keeps the same proportions across Firefox- and Chromium-based browsers:
+The toolbar keeps the large, shield-free main logo visible and uses the browser's native badge for status information:
 
-| Marker | Meaning |
+| Badge | Meaning |
 | --- | --- |
-| Green shield/check | Pi-hole is active and the current domain is allowed |
-| Red shield/cross | The current domain is blocked |
-| Orange shield/clock | The current domain is temporarily allowed |
-| Blue-grey shield/pause | Pi-hole filtering is disabled |
-| Yellow shield/exclamation mark | The current status is unavailable or an error occurred |
+| Green `✓` | Pi-hole is active and the current domain is allowed |
+| Red `×` | The current domain is blocked |
+| Orange time, for example `5m` | The current domain is temporarily allowed |
+| Blue-grey `OFF` | Pi-hole filtering is disabled |
+| Yellow `!` | The current status is unavailable or an error occurred |
 
 ## Requirements
 

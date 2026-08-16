@@ -149,7 +149,12 @@ export default class DomainStatusService {
         : null
     const temporary = temporaryRemainingSeconds !== null
 
-    await BadgeService.setDomainStatusIcon(tabId, state, temporary)
+    await BadgeService.setDomainStatusIcon(
+      tabId,
+      state,
+      temporary,
+      temporary ? temporaryRemainingSeconds : null,
+    )
     return { domain, state, groupName }
   }
 

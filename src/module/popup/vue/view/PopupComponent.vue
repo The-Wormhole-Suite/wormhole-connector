@@ -7,8 +7,8 @@
             class="popup-status-icon"
             :src="headerIconPath"
             alt=""
-            width="40"
-            height="40"
+            width="48"
+            height="48"
           />
           <span>{{ translate(I18NPopupKeys.popup_status_card_title) }}</span>
         </div>
@@ -242,10 +242,10 @@ body {
 
 .popup-status-icon {
   display: block;
-  flex: 0 0 40px;
-  width: 40px;
-  height: 40px;
-  margin-top: 4px;
+  flex: 0 0 48px;
+  width: 48px;
+  height: 48px;
+  margin-top: 8px;
   object-fit: contain;
 }
 

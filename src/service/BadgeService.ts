@@ -1,6 +1,7 @@
 import PiHoleApiStatusEnum from '../api/enum/PiHoleApiStatusEnum'
 import {
   composeToolbarIconState,
+  getToolbarBadgePresentation,
   type GlobalToolbarIconState,
   type ToolbarIconState,
 } from './BadgeState'
@@ -24,16 +25,20 @@ type BadgeDetails = {
   tabId?: number
 }
 
+type BadgeColorDetails = {
+  color: string
+  tabId?: number
+}
+
 type ToolbarActionApi = {
   setIcon: (details: IconDetails) => void | Promise<void>
   setBadgeText: (details: BadgeDetails) => void | Promise<void>
+  setBadgeBackgroundColor: (details: BadgeColorDetails) => void | Promise<void>
+  setBadgeTextColor?: (details: BadgeColorDetails) => void | Promise<void>
 }
 
 /**
- * Cross-browser toolbar icon service.
- *
- * Status markers are rendered into dedicated icons because native browser
- * badges are disproportionately large in some Firefox-based browsers.
+ * Cross-browser toolbar icon and native badge service.
  *
  * The legacy class and method names remain available so existing callers do not
  * break.
@@ -42,40 +47,10 @@ export class BadgeService {
   private static readonly actionApi = (chrome.action ||
     chrome.browserAction) as ToolbarActionApi
 
-  private static readonly iconPaths: Record<
-    ToolbarIconState,
-    Record<number, string>
-  > = {
-    unknown: {
-      16: 'icon/toolbar/unknown-16.png',
-      32: 'icon/toolbar/unknown-32.png',
-      48: 'icon/toolbar/unknown-48.png',
-    },
-    active: {
-      16: 'icon/toolbar/active-16.png',
-      32: 'icon/toolbar/active-32.png',
-      48: 'icon/toolbar/active-48.png',
-    },
-    blocked: {
-      16: 'icon/toolbar/blocked-16.png',
-      32: 'icon/toolbar/blocked-32.png',
-      48: 'icon/toolbar/blocked-48.png',
-    },
-    temporary: {
-      16: 'icon/toolbar/temporary-16.png',
-      32: 'icon/toolbar/temporary-32.png',
-      48: 'icon/toolbar/temporary-48.png',
-    },
-    disabled: {
-      16: 'icon/toolbar/disabled-16.png',
-      32: 'icon/toolbar/disabled-32.png',
-      48: 'icon/toolbar/disabled-48.png',
-    },
-    error: {
-      16: 'icon/toolbar/error-16.png',
-      32: 'icon/toolbar/error-32.png',
-      48: 'icon/toolbar/error-48.png',
-    },
+  private static readonly iconPaths: Record<number, string> = {
+    16: 'icon/icon-16.png',
+    32: 'icon/icon-32.png',
+    48: 'icon/icon-48.png',
   }
 
   private static globalState: GlobalToolbarIconState = 'unknown'
@@ -128,12 +103,13 @@ export class BadgeService {
     tabId: number,
     domainState: 'allowed' | 'blocked' | 'unknown',
     temporary: boolean,
+    temporaryRemainingSeconds?: number | null,
   ): Promise<void> {
     const iconState = composeToolbarIconState(
       this.globalState,
       temporary ? 'temporary' : domainState,
     )
-    this.setIconState(iconState, tabId)
+    this.setIconState(iconState, tabId, temporaryRemainingSeconds)
     return Promise.resolve()
   }
 
@@ -161,9 +137,13 @@ export class BadgeService {
     }
   }
 
-  private static setIconState(state: ToolbarIconState, tabId?: number): void {
+  private static setIconState(
+    state: ToolbarIconState,
+    tabId?: number,
+    temporaryRemainingSeconds?: number | null,
+  ): void {
     const details: IconDetails = {
-      path: this.iconPaths[state],
+      path: this.iconPaths,
     }
 
     if (typeof tabId !== 'undefined') {
@@ -171,8 +151,36 @@ export class BadgeService {
       this.tabStates.set(tabId, state)
     }
 
-    this.clearVisibleBadge(tabId)
     this.actionApi.setIcon(details)
+    this.setVisibleBadge(state, tabId, temporaryRemainingSeconds)
+  }
+
+  private static setVisibleBadge(
+    state: ToolbarIconState,
+    tabId?: number,
+    temporaryRemainingSeconds?: number | null,
+  ): void {
+    const presentation = getToolbarBadgePresentation(
+      state,
+      temporaryRemainingSeconds,
+    )
+    const textDetails: BadgeDetails = { text: presentation.text }
+    const backgroundDetails: BadgeColorDetails = {
+      color: presentation.backgroundColor,
+    }
+    const textColorDetails: BadgeColorDetails = {
+      color: presentation.textColor,
+    }
+
+    if (typeof tabId !== 'undefined') {
+      textDetails.tabId = tabId
+      backgroundDetails.tabId = tabId
+      textColorDetails.tabId = tabId
+    }
+
+    this.actionApi.setBadgeBackgroundColor(backgroundDetails)
+    this.actionApi.setBadgeTextColor?.(textColorDetails)
+    this.actionApi.setBadgeText(textDetails)
   }
 
   private static clearVisibleBadge(tabId?: number): void {

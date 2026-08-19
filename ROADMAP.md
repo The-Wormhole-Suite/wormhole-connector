@@ -75,10 +75,11 @@ These items require real systems or final browser/store interaction and should n
 - [x] Run `npm run package:artifacts` from the frozen release-candidate commit.
 - [x] Generate and upload `SHA256SUMS.txt` from the frozen release-candidate commit; final-version artifacts must be regenerated after version selection.
 - [x] Confirm the intended Wormhole artwork is present in the frozen release-candidate branch.
-- [ ] Confirm Pi-hole and AdGuard third-party disclaimers.
-- [ ] Confirm all eight locales in the store listing.
-- [ ] Publish privacy policy and permission explanations.
-- [ ] Confirm packaged legal files and third-party notices.
+- [x] Confirm Pi-hole and AdGuard third-party disclaimers in `NOTICE` and the store listing.
+- [x] Confirm all eight packaged locales are represented in `STORE_LISTING.md`.
+- [x] Prepare the privacy policy and store permission explanations in `PRIVACY` and `STORE_LISTING.md`.
+- [ ] Publish/link the final privacy policy in the actual store submissions.
+- [x] Confirm both browser packages require and validate `LICENSE.txt`, `NOTICE.txt`, `CREDITS.txt`, `PRIVACY.txt`, and `THIRD_PARTY_NOTICES.txt`.
 - [ ] Upload the unsigned XPI/source archive to Mozilla using `AMO_REVIEWER_NOTES.md`.
 - [ ] Upload the ZIP to the Chrome Web Store.
 - [ ] Replace developer-installation instructions with store links after publication.

@@ -6,6 +6,7 @@ on:
     branches:
       - master
       - dev
+      - release/public-hardening-candidate
 
 permissions:
   contents: read

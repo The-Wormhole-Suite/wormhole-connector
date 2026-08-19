@@ -1,8 +1,8 @@
 # Release Checklist
 
-Release candidate: `release/public-hardening-candidate` @ `163c3e51a00d3ac0a5997566fd3be755b689af9c`
+Release candidate: tip of `release/public-hardening-candidate`
 
-Use this exact commit for all real-system and browser verification. Record failures before changing the candidate; fixes must be made on `dev`, validated, and then a new candidate commit must be frozen.
+Resolve and record the branch tip before every real-system/browser test session and use that exact commit for the whole session. Record failures before changing the candidate; fixes must be made on `dev`, validated, and only then promoted to the candidate branch.
 
 ## Code and behavior
 
@@ -31,7 +31,10 @@ For each browser test, record browser/version, OS, candidate commit, result, and
 
 ## Validation and artifacts
 
-- [ ] Set one unique version in `package.json` and both source manifests.
+- [ ] Choose one new unique semantic release version.
+- [x] Use `npm run version:set -- <semver>` for the synchronized package/lockfile/manifest update; do not edit release versions independently.
+- [x] Keep human-readable SemVer in manifest `version_name` while using monotonic four-component numeric manifest versions.
+- [x] Run `npm run verify:release -- v<semver>` before the full release pipeline; it must reject any tag/package/lockfile/manifest mismatch.
 - [x] Run `npm ci --no-audit --no-fund` from a clean checkout (GitHub Actions also used `--prefer-offline`).
 - [x] Run `npm run check` on the frozen candidate.
 - [x] Run `npm run package:artifacts` on the frozen candidate.

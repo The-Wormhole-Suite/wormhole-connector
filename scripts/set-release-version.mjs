@@ -24,10 +24,7 @@ export async function setReleaseVersion(version, rootDir = process.cwd()) {
   )
 
   const files = Object.fromEntries(
-    fileEntries.map(([key, filePath, value]) => [
-      key,
-      { filePath, value },
-    ]),
+    fileEntries.map(([key, filePath, value]) => [key, { filePath, value }]),
   )
 
   if (!files.lock.value.packages?.['']) {

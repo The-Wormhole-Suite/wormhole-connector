@@ -1,5 +1,6 @@
-import { manifestVersionFor } from './release-version.mjs'
 import { readFile } from 'node:fs/promises'
+
+import { manifestVersionFor } from './release-version.mjs'
 
 const tag = process.argv[2]
 if (!tag) {
@@ -9,6 +10,7 @@ if (!tag) {
 }
 
 const packageJson = JSON.parse(await readFile('package.json', 'utf8'))
+const packageLock = JSON.parse(await readFile('package-lock.json', 'utf8'))
 const firefoxManifest = JSON.parse(
   await readFile('manifest.firefox.json', 'utf8'),
 )
@@ -23,17 +25,16 @@ if (tag !== expectedTag) {
   )
 }
 
+assertEqual(packageLock.version, packageJson.version, 'package-lock version')
+assertEqual(
+  packageLock.packages?.['']?.version,
+  packageJson.version,
+  'package-lock root package version',
+)
+
 const expectedManifestVersion = manifestVersionFor(packageJson.version)
-assertEqual(
-  firefoxManifest.version,
-  expectedManifestVersion,
-  'Firefox version',
-)
-assertEqual(
-  chromeManifest.version,
-  expectedManifestVersion,
-  'Chrome version',
-)
+assertEqual(firefoxManifest.version, expectedManifestVersion, 'Firefox version')
+assertEqual(chromeManifest.version, expectedManifestVersion, 'Chrome version')
 assertEqual(
   firefoxManifest.version_name,
   packageJson.version,

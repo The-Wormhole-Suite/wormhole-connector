@@ -8,11 +8,11 @@ const PRERELEASE_SLOTS = {
 }
 const MAX_PRERELEASE_NUMBER = 9999
 const MAX_COMPONENT = 65535
+const RELEASE_VERSION_PATTERN =
+  /^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(?:-(alpha|beta|rc)\.([1-9][0-9]*))?$/
 
 export function parseReleaseVersion(version) {
-  const match = /^(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)\.(0|[1-9][0-9]*)(?:-(alpha|beta|rc)\.([1-9][0-9]*))?$/.exec(
-    version,
-  )
+  const match = RELEASE_VERSION_PATTERN.exec(version)
 
   if (!match) {
     throw new Error(

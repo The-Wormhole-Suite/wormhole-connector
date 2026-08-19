@@ -65,8 +65,9 @@ jobs:
             fi
           done
 
-          VERSION="${MAJOR}.${MINOR}.${PATCH}"
           RELEASE_LABEL=${TAG#v}
+          VERSION="$RELEASE_LABEL"
+          node scripts/release-version.mjs "$RELEASE_LABEL" >/dev/null
 
           git fetch --force origin "refs/tags/${TAG}:refs/tags/${TAG}"
           TAG_SHA=$(git rev-list -n 1 "$TAG")
@@ -77,10 +78,10 @@ jobs:
             exit 1
           fi
 
-          if [[ "$TAG" == "v${VERSION}" ]]; then
-            IS_PRERELEASE=false
-          else
+          if [[ "$RELEASE_LABEL" == *-* ]]; then
             IS_PRERELEASE=true
+          else
+            IS_PRERELEASE=false
           fi
 
           echo "TAG=${TAG}" >> "$GITHUB_ENV"
@@ -107,12 +108,14 @@ jobs:
 
           npm version "$VERSION" --no-git-tag-version --allow-same-version
 
-          RELEASE_VERSION="$VERSION" node <<'NODE'
+          MANIFEST_VERSION=$(node scripts/release-version.mjs "$VERSION")
+          RELEASE_VERSION="$VERSION" MANIFEST_VERSION="$MANIFEST_VERSION" node <<'NODE'
           const fs = require('node:fs')
 
           for (const path of ['manifest.firefox.json', 'manifest.chrome.json']) {
             const manifest = JSON.parse(fs.readFileSync(path, 'utf8'))
-            manifest.version = process.env.RELEASE_VERSION
+            manifest.version = process.env.MANIFEST_VERSION
+            manifest.version_name = process.env.RELEASE_VERSION
             fs.writeFileSync(path, `${JSON.stringify(manifest, null, 2)}\n`)
           }
           NODE

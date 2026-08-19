@@ -2,10 +2,7 @@ import { readFile, writeFile } from 'node:fs/promises'
 import path from 'node:path'
 import { fileURLToPath } from 'node:url'
 
-import {
-  manifestVersionFor,
-  parseReleaseVersion,
-} from './release-version.mjs'
+import { manifestVersionFor, parseReleaseVersion } from './release-version.mjs'
 
 const RELEASE_FILES = {
   package: 'package.json',

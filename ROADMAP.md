@@ -1,12 +1,14 @@
 # Wormhole Connector Roadmap
 
-Last updated: 2026-08-16
+Last updated: 2026-08-20
 
 ## Current status
 
 The core release-hardening work for Wormhole Connector is implemented. The extension has been renamed consistently, release blockers were addressed, Pi-hole session and multi-instance handling were hardened, backup/import/sync support was added without storing credentials, eight locales are included, and AdGuard Home support is implemented for the agreed self-hosted scope.
 
-Automated validation from the prepared release state completed successfully, including TypeScript/Vue checks, linting, formatting, tests, `web-ext` validation, and dependency audit.
+Automated validation from the prepared release state completed successfully, including TypeScript/Vue checks, linting, formatting, tests, `web-ext` validation, dependency audit, browser packaging, matching source packaging, and SHA-256 checksum generation.
+
+The release baseline is now frozen on branch `release/public-hardening-candidate` at commit `163c3e51a00d3ac0a5997566fd3be755b689af9c`. That exact commit contains the release-hardening work, the current Wormhole GUI/icon state, and corrected repository metadata. GitHub Actions CI run `31962091061` completed successfully on that commit. The branch deliberately remains on source version `5.0.1` for now; a new unique public release version must be chosen only after the real-system/browser verification gate, because `v5.1.0-beta.1` and `v5.1.0-beta.2` have already been published as prereleases.
 
 Private AdGuard DNS Cloud integration is intentionally not part of the current release scope.
 
@@ -57,14 +59,22 @@ These items require real systems or final browser/store interaction and should n
 - [ ] Current Chrome or Chromium Desktop.
 - [ ] Test Firefox Android popup, file import, alarms, and synchronization before advertising Android support.
 
+## Release candidate baseline
+
+- [x] Reconcile the current `dev` line with the release-hardening implementation.
+- [x] Confirm the intended current Wormhole GUI and final icon assets are present.
+- [x] Freeze the validated source state as `release/public-hardening-candidate`.
+- [x] Record the exact release-candidate commit: `163c3e51a00d3ac0a5997566fd3be755b689af9c`.
+- [x] Confirm GitHub Actions CI passes on that exact commit (`31962091061`).
+
 ## Public release preparation
 
 - [ ] Confirm one unique release version in `package.json` and both source manifests.
-- [ ] Run `npm ci --no-audit --no-fund` from a clean checkout.
-- [ ] Run `npm run check` from the final release commit.
-- [ ] Run `npm run package:artifacts` from the final release commit.
-- [ ] Verify `SHA256SUMS.txt`.
-- [ ] Confirm the independent Wormhole artwork intended for the public release is present in the release branch.
+- [x] Run `npm ci --no-audit --no-fund` from a clean GitHub Actions checkout (CI also uses `--prefer-offline`).
+- [x] Run `npm run check` from the frozen release-candidate commit.
+- [x] Run `npm run package:artifacts` from the frozen release-candidate commit.
+- [x] Generate and upload `SHA256SUMS.txt` from the frozen release-candidate commit; final-version artifacts must be regenerated after version selection.
+- [x] Confirm the intended Wormhole artwork is present in the frozen release-candidate branch.
 - [ ] Confirm Pi-hole and AdGuard third-party disclaimers.
 - [ ] Confirm all eight locales in the store listing.
 - [ ] Publish privacy policy and permission explanations.
@@ -82,9 +92,9 @@ These items require real systems or final browser/store interaction and should n
 
 ## Next recommended sequence
 
-1. Reconcile the final release branch with `dev`, ensuring the intended Wormhole icons/design and release-hardening code are together.
-2. Run the complete automated release validation on that exact commit.
-3. Perform the real Pi-hole v6 and AdGuard Home integration matrix above.
-4. Perform Firefox and Chromium desktop checks.
-5. Package one uniquely versioned prerelease/stable candidate and verify checksums.
+1. Perform the real Pi-hole v6 and AdGuard Home integration matrix above against `release/public-hardening-candidate`.
+2. Perform Firefox and Chromium desktop checks against the same candidate.
+3. Choose one new, unique release version (do not reuse `5.0.1`, `5.1.0-beta.1`, or `5.1.0-beta.2`).
+4. Apply that version consistently to `package.json` and both source manifests.
+5. Re-run the complete CI/package/checksum pipeline on the versioned final release commit.
 6. Publish to the stores only after the hardware/browser checks pass.

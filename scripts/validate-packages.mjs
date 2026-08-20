@@ -1,3 +1,4 @@
+import { manifestVersionFor } from './release-version.mjs'
 import { readFile, readdir } from 'node:fs/promises'
 import path from 'node:path'
 
@@ -45,12 +46,40 @@ async function validateBuild({
     expectedManifestVersion,
     `${browser} source manifest version`,
   )
-  assertEqual(builtManifest.version, packageJson.version, `${browser} version`)
   assertEqual(
+    builtManifest.version,
     sourceManifest.version,
-    packageJson.version,
-    `${browser} source version`,
+    `${browser} built/source version`,
   )
+
+  const encodedReleaseVersion = manifestVersionFor(packageJson.version)
+  const validManifestVersions = new Set([
+    packageJson.version,
+    encodedReleaseVersion,
+  ])
+  assert(
+    validManifestVersions.has(sourceManifest.version),
+    `${browser} version mismatch: expected ${packageJson.version} or ${encodedReleaseVersion}, received ${sourceManifest.version}`,
+  )
+
+  if (sourceManifest.version === encodedReleaseVersion) {
+    assertEqual(
+      sourceManifest.version_name,
+      packageJson.version,
+      `${browser} source version_name`,
+    )
+    assertEqual(
+      builtManifest.version_name,
+      packageJson.version,
+      `${browser} built version_name`,
+    )
+  } else if (sourceManifest.version_name !== undefined) {
+    assertEqual(
+      sourceManifest.version_name,
+      packageJson.version,
+      `${browser} source version_name`,
+    )
+  }
 
   const outputFiles = await listFiles(outputDirectory)
   const outputFileSet = new Set(outputFiles)

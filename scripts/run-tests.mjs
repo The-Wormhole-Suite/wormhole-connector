@@ -3,12 +3,16 @@ import { readdir } from 'node:fs/promises'
 import path from 'node:path'
 
 const testFiles = (await readdir('tests', { withFileTypes: true }))
-  .filter((entry) => entry.isFile() && entry.name.endsWith('.test.ts'))
+  .filter(
+    (entry) =>
+      entry.isFile() &&
+      (entry.name.endsWith('.test.ts') || entry.name.endsWith('.test.mjs')),
+  )
   .map((entry) => path.join('tests', entry.name))
   .sort()
 
 if (testFiles.length === 0) {
-  throw new Error('No TypeScript test files were found in tests/.')
+  throw new Error('No test files were found in tests/.')
 }
 
 const child = spawn(

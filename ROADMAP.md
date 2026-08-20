@@ -8,7 +8,9 @@ The core release-hardening work for Wormhole Connector is implemented. The exten
 
 Automated validation from the prepared release state completed successfully, including TypeScript/Vue checks, linting, formatting, tests, `web-ext` validation, dependency audit, browser packaging, matching source packaging, and SHA-256 checksum generation.
 
-The release baseline is frozen on branch `release/public-hardening-candidate`. The candidate branch is the canonical reference for real-system and browser verification; its tip must be revalidated whenever release-hardening changes are promoted to it. The currently recorded baseline was validated by GitHub Actions CI run `31962091061`. The source deliberately remains on version `5.0.1` for now; a new unique public release version must be chosen only after the real-system/browser verification gate, because `v5.1.0-beta.1` and `v5.1.0-beta.2` have already been published as prereleases. Release tooling on `dev` now enforces a one-command synchronized version update and rejects tag/package/lockfile/manifest mismatches before publication. The complete implementation passed GitHub Actions CI run `32311505718` on commit `8455afa25b9a27e53ba9005967208d08b8f12006`.
+The release baseline is frozen on branch `release/public-hardening-candidate`. The candidate branch is the canonical reference for real-system and browser verification; its tip must be revalidated whenever release-hardening changes are promoted to it. The current promoted candidate has passed the full branch CI/package/artifact pipeline after promotion through PR #60. The source deliberately remains on version `5.0.1` for now; a new unique public release version must be chosen only after the real-system/browser verification gate, because `v5.1.0-beta.1` and `v5.1.0-beta.2` have already been published as prereleases. Release tooling on `dev` enforces a one-command synchronized version update and rejects tag/package/lockfile/manifest mismatches before publication.
+
+The remaining manual integration and browser checks are tracked centrally in issue #61. Test results must be recorded against the frozen candidate commit so a later source change cannot silently inherit an earlier hardware/browser validation result.
 
 Private AdGuard DNS Cloud integration is intentionally not part of the current release scope.
 
@@ -68,7 +70,7 @@ These items require real systems or final browser/store interaction and should n
 - [x] Confirm the intended current Wormhole GUI and final icon assets are present.
 - [x] Freeze the validated source state as `release/public-hardening-candidate`.
 - [x] Treat the tip of `release/public-hardening-candidate` as the canonical candidate reference rather than duplicating a commit SHA in documentation.
-- [x] Confirm GitHub Actions CI passes before promoting a new candidate state; the original frozen baseline was validated by run `31962091061`.
+- [x] Confirm GitHub Actions CI passes before promoting a new candidate state and confirm the promoted candidate tip passes the branch CI/package/artifact pipeline itself.
 - [x] Run the full CI/package/artifact pipeline automatically on pushes to `release/public-hardening-candidate` as well as `dev`/`master`.
 
 ## Public release preparation
@@ -99,8 +101,8 @@ These items require real systems or final browser/store interaction and should n
 
 ## Next recommended sequence
 
-1. Perform the real Pi-hole v6 and AdGuard Home integration matrix above against `release/public-hardening-candidate`.
-2. Perform Firefox and Chromium desktop checks against the same candidate.
+1. Perform and record the real Pi-hole v6 and AdGuard Home integration matrix in issue #61 against `release/public-hardening-candidate`.
+2. Perform and record Firefox and Chromium desktop checks in issue #61 against the same candidate.
 3. Choose one new, unique release version (do not reuse `5.0.1`, `5.1.0-beta.1`, or `5.1.0-beta.2`).
 4. Apply it with `npm run version:set -- <semver>` so package metadata, lockfile metadata, both numeric manifest versions, and both `version_name` fields stay synchronized.
 5. Verify it with `npm run verify:release -- v<semver>` and re-run the complete CI/package/checksum pipeline on the versioned final release commit.

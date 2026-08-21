@@ -1,6 +1,6 @@
 # Wormhole Connector Roadmap
 
-Last updated: 2026-08-20
+Last updated: 2026-08-22
 
 ## Current status
 
@@ -12,7 +12,7 @@ The release baseline is frozen on branch `release/public-hardening-candidate`. T
 
 The remaining manual integration and browser checks are tracked centrally in issue #61. Test results must be recorded against the frozen candidate commit so a later source change cannot silently inherit an earlier hardware/browser validation result.
 
-Repository-security follow-up is tracked separately in issue #62. The frozen candidate already contains the patched `nanoid` 3.3.18 override and code scanning currently reports no open alerts. GitHub still reports the related Dependabot alert on the older default `master` state, and Secret Scanning is currently disabled for the repository. Secret Scanning (and push protection, if available) should be enabled and re-checked before public release; the stale default-branch dependency alert should clear when the validated candidate state is promoted to `master`.
+Repository-security follow-up in issue #62 is complete. GitHub Secret Scanning is enabled and its alert API reports zero open findings. The frozen candidate already contains the patched `nanoid` 3.3.18 override and code scanning reports no open alerts. GitHub still reports the related Dependabot alert on the older default `master` state; that stale default-branch dependency alert should clear when the validated candidate state is promoted to `master`. Push Protection should remain enabled where available; the connected GitHub MCP does not expose a direct readback of that repository setting.
 
 Private AdGuard DNS Cloud integration is intentionally not part of the current release scope.
 
@@ -90,7 +90,8 @@ These items require real systems or final browser/store interaction and should n
 - [x] Prepare the privacy policy and store permission explanations in `PRIVACY` and `STORE_LISTING.md`.
 - [x] Confirm the frozen candidate contains the patched `nanoid` 3.3.18 override.
 - [x] Confirm GitHub code scanning currently reports no open alerts.
-- [ ] Enable GitHub Secret Scanning and, if available, push protection; re-check and triage any finding (tracked in #62).
+- [x] Enable GitHub Secret Scanning and re-check the repository: zero open findings; issue #62 closed.
+- [ ] Confirm Push Protection remains enabled in repository settings before public store publication; the connected MCP cannot read this toggle back directly.
 - [ ] Ensure the validated dependency state reaches `master` so the stale default-branch `nanoid` Dependabot alert is cleared.
 - [ ] Publish/link the final privacy policy in the actual store submissions.
 - [x] Confirm both browser packages require and validate `LICENSE.txt`, `NOTICE.txt`, `CREDITS.txt`, `PRIVACY.txt`, and `THIRD_PARTY_NOTICES.txt`.
@@ -107,10 +108,9 @@ These items require real systems or final browser/store interaction and should n
 
 ## Next recommended sequence
 
-1. Enable GitHub Secret Scanning (and push protection if available) and close repository-hardening issue #62 after a clean re-check.
-2. Perform and record the real Pi-hole v6 and AdGuard Home integration matrix in issue #61 against `release/public-hardening-candidate`.
-3. Perform and record Firefox and Chromium desktop checks in issue #61 against the same candidate.
-4. Choose one new, unique release version (do not reuse `5.0.1`, `5.1.0-beta.1`, or `5.1.0-beta.2`).
-5. Apply it with `npm run version:set -- <semver>` so package metadata, lockfile metadata, both numeric manifest versions, and both `version_name` fields stay synchronized.
-6. Verify it with `npm run verify:release -- v<semver>` and re-run the complete CI/package/checksum pipeline on the versioned final release commit.
-7. Promote the validated release state to `master`, confirm the default-branch Dependabot alert clears, and publish to the stores only after all release gates pass.
+1. Perform and record the real Pi-hole v6 and AdGuard Home integration matrix in issue #61 against `release/public-hardening-candidate`.
+2. Perform and record Firefox and Chromium desktop checks in issue #61 against the same candidate.
+3. Choose one new, unique release version (do not reuse `5.0.1`, `5.1.0-beta.1`, or `5.1.0-beta.2`).
+4. Apply it with `npm run version:set -- <semver>` so package metadata, lockfile metadata, both numeric manifest versions, and both `version_name` fields stay synchronized.
+5. Verify it with `npm run verify:release -- v<semver>` and re-run the complete CI/package/checksum pipeline on the versioned final release commit.
+6. Promote the validated release state to `master`, confirm the default-branch Dependabot alert clears, confirm Push Protection in repository settings if available, and publish to the stores only after all release gates pass.

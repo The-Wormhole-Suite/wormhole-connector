@@ -106,6 +106,27 @@ test('AdGuard filtering reasons map conservatively to toolbar states', () => {
   assert.equal(evaluateAdGuardReason(undefined), 'unknown')
 })
 
+test('AdGuard fresh installs treat null custom rules as an empty list', async () => {
+  const originalFetch = globalThis.fetch
+  globalThis.fetch = async (input) => {
+    const request = input as Request
+    const url = new URL(request.url)
+    if (url.pathname.endsWith('/control/filtering/status')) {
+      return jsonResponse({ user_rules: null })
+    }
+    return new Response('not found', { status: 404 })
+  }
+
+  try {
+    assert.deepEqual(
+      await AdGuardHomeApiService.getUserRules(adGuardInstance),
+      [],
+    )
+  } finally {
+    globalThis.fetch = originalFetch
+  }
+})
+
 test('AdGuard rule writes authenticate, preserve the proxy path, and verify', async () => {
   let rules = ['||old.example^']
   const requests: Request[] = []

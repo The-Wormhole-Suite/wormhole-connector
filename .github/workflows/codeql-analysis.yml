@@ -5,7 +5,29 @@ on:
     branches:
       - master
       - dev
+      - release/public-hardening-candidate
+    paths:
+      - '.github/workflows/codeql-analysis.yml'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'scripts/**'
+      - 'src/**'
+      - 'tests/**'
+      - 'tsconfig*.json'
+      - 'eslint.config.*'
   pull_request:
+    branches:
+      - dev
+      - master
+    paths:
+      - '.github/workflows/codeql-analysis.yml'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'scripts/**'
+      - 'src/**'
+      - 'tests/**'
+      - 'tsconfig*.json'
+      - 'eslint.config.*'
   schedule:
     - cron: '23 4 * * 1'
 

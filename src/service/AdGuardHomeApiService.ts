@@ -133,6 +133,9 @@ export default class AdGuardHomeApiService {
       await this.getAxiosInstance(instance).get<AdGuardFilterStatus>(
         'filtering/status',
       )
+    if (response.data.user_rules === null) {
+      return []
+    }
     if (!Array.isArray(response.data.user_rules)) {
       throw new Error('AdGuard Home did not return its custom filtering rules')
     }

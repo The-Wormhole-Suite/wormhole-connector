@@ -1,6 +1,6 @@
 # Wormhole Connector Roadmap
 
-Last updated: 2026-08-20
+Last updated: 2026-08-23
 
 ## Current status
 
@@ -8,7 +8,13 @@ The core release-hardening work for Wormhole Connector is implemented. The exten
 
 Automated validation from the prepared release state completed successfully, including TypeScript/Vue checks, linting, formatting, tests, `web-ext` validation, dependency audit, browser packaging, matching source packaging, and SHA-256 checksum generation.
 
-The release baseline is frozen on branch `release/public-hardening-candidate`. The candidate branch is the canonical reference for real-system and browser verification; its tip must be revalidated whenever release-hardening changes are promoted to it. The currently recorded baseline was validated by GitHub Actions CI run `31962091061`. The source deliberately remains on version `5.0.1` for now; a new unique public release version must be chosen only after the real-system/browser verification gate, because `v5.1.0-beta.1` and `v5.1.0-beta.2` have already been published as prereleases. Release tooling on `dev` now enforces a one-command synchronized version update and rejects tag/package/lockfile/manifest mismatches before publication. The complete implementation passed GitHub Actions CI run `32311505718` on commit `8455afa25b9a27e53ba9005967208d08b8f12006`.
+The release baseline is frozen on branch `release/public-hardening-candidate`. The candidate branch is the canonical reference for real-system and browser verification; its tip must be revalidated whenever release-hardening changes are promoted to it. The current promoted candidate has passed the full branch CI/package/artifact pipeline after promotion through PR #60. The source deliberately remains on version `5.0.1` for now; a new unique public release version must be chosen only after the real-system/browser verification gate, because `v5.1.0-beta.1` and `v5.1.0-beta.2` have already been published as prereleases. Release tooling on `dev` enforces a one-command synchronized version update and rejects tag/package/lockfile/manifest mismatches before publication.
+
+The remaining manual integration and browser checks are tracked centrally in issue #61. Test results must be recorded against the frozen candidate commit so a later source change cannot silently inherit an earlier hardware/browser validation result.
+
+A container-backed GitHub Actions preflight now exercises Pi-hole v6 and AdGuard Home, including two Pi-hole instances with independent group IDs, missing/offline instance handling, partial-write rollback, AdGuard global/client rules, concurrent foreign-rule protection, and credential whitespace. These automated tests reduce manual risk but do not replace the real-system/browser gates in #61. CI triggers are scoped to avoid duplicate `dev` → release-candidate PR runs; browser/source artifacts are generated only for the candidate or an explicit manual CI run, Markdown-only documentation changes skip the expensive standard CI, and CodeQL is limited to code-relevant changes plus its weekly scan.
+
+Repository-security follow-up in issue #62 is complete. GitHub Secret Scanning is enabled and its alert API reports zero open findings. The frozen candidate already contains the patched `nanoid` 3.3.18 override and code scanning reports no open alerts. GitHub still reports the related Dependabot alert on the older default `master` state; that stale default-branch dependency alert should clear when the validated candidate state is promoted to `master`. Push Protection should remain enabled where available; the connected GitHub MCP does not expose a direct readback of that repository setting.
 
 Private AdGuard DNS Cloud integration is intentionally not part of the current release scope.
 
@@ -36,6 +42,8 @@ Private AdGuard DNS Cloud integration is intentionally not part of the current r
 - [x] Add monotonic browser-manifest release versions for alpha, beta, RC, and stable releases.
 - [x] Add a synchronized release-version setter for `package.json`, `package-lock.json`, and both source manifests.
 - [x] Make the release verifier reject tag, package, lockfile, manifest-version, and `version_name` mismatches.
+- [x] Add container-backed Pi-hole v6 / AdGuard Home integration tests for the highest-risk backend and rollback paths.
+- [x] Optimize GitHub Actions triggers to avoid duplicate promotion-PR runs and unnecessary artifact generation.
 
 ## Release verification still required
 
@@ -68,8 +76,8 @@ These items require real systems or final browser/store interaction and should n
 - [x] Confirm the intended current Wormhole GUI and final icon assets are present.
 - [x] Freeze the validated source state as `release/public-hardening-candidate`.
 - [x] Treat the tip of `release/public-hardening-candidate` as the canonical candidate reference rather than duplicating a commit SHA in documentation.
-- [x] Confirm GitHub Actions CI passes before promoting a new candidate state; the original frozen baseline was validated by run `31962091061`.
-- [x] Run the full CI/package/artifact pipeline automatically on pushes to `release/public-hardening-candidate` as well as `dev`/`master`.
+- [x] Confirm GitHub Actions CI passes before promoting a new candidate state and confirm the promoted candidate tip passes the branch CI/package/artifact pipeline itself.
+- [x] Run full CI checks on `dev`, `master`, and `release/public-hardening-candidate`; generate browser/source/checksum artifacts automatically only from the candidate (or an explicit manual CI run).
 
 ## Public release preparation
 
@@ -84,6 +92,11 @@ These items require real systems or final browser/store interaction and should n
 - [x] Confirm Pi-hole and AdGuard third-party disclaimers in `NOTICE` and the store listing.
 - [x] Confirm all eight packaged locales are represented in `STORE_LISTING.md`.
 - [x] Prepare the privacy policy and store permission explanations in `PRIVACY` and `STORE_LISTING.md`.
+- [x] Confirm the frozen candidate contains the patched `nanoid` 3.3.18 override.
+- [x] Confirm GitHub code scanning currently reports no open alerts.
+- [x] Enable GitHub Secret Scanning and re-check the repository: zero open findings; issue #62 closed.
+- [ ] Confirm Push Protection remains enabled in repository settings before public store publication; the connected MCP cannot read this toggle back directly.
+- [ ] Ensure the validated dependency state reaches `master` so the stale default-branch `nanoid` Dependabot alert is cleared.
 - [ ] Publish/link the final privacy policy in the actual store submissions.
 - [x] Confirm both browser packages require and validate `LICENSE.txt`, `NOTICE.txt`, `CREDITS.txt`, `PRIVACY.txt`, and `THIRD_PARTY_NOTICES.txt`.
 - [ ] Upload the unsigned XPI/source archive to Mozilla using `AMO_REVIEWER_NOTES.md`.
@@ -99,9 +112,9 @@ These items require real systems or final browser/store interaction and should n
 
 ## Next recommended sequence
 
-1. Perform the real Pi-hole v6 and AdGuard Home integration matrix above against `release/public-hardening-candidate`.
-2. Perform Firefox and Chromium desktop checks against the same candidate.
+1. Perform and record the real Pi-hole v6 and AdGuard Home integration matrix in issue #61 against `release/public-hardening-candidate`.
+2. Perform and record Firefox and Chromium desktop checks in issue #61 against the same candidate.
 3. Choose one new, unique release version (do not reuse `5.0.1`, `5.1.0-beta.1`, or `5.1.0-beta.2`).
 4. Apply it with `npm run version:set -- <semver>` so package metadata, lockfile metadata, both numeric manifest versions, and both `version_name` fields stay synchronized.
 5. Verify it with `npm run verify:release -- v<semver>` and re-run the complete CI/package/checksum pipeline on the versioned final release commit.
-6. Publish to the stores only after the hardware/browser checks pass.
+6. Promote the validated release state to `master`, confirm the default-branch Dependabot alert clears, confirm Push Protection in repository settings if available, and publish to the stores only after all release gates pass.

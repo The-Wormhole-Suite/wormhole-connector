@@ -1,12 +1,24 @@
 name: CI
 
 on:
+  workflow_dispatch:
   pull_request:
+    branches:
+      - dev
+      - master
+    paths-ignore:
+      - '**/*.md'
+      - '.github/ISSUE_TEMPLATE/**'
+      - '.github/PULL_REQUEST_TEMPLATE*'
   push:
     branches:
       - master
       - dev
       - release/public-hardening-candidate
+    paths-ignore:
+      - '**/*.md'
+      - '.github/ISSUE_TEMPLATE/**'
+      - '.github/PULL_REQUEST_TEMPLATE*'
 
 permissions:
   contents: read
@@ -40,15 +52,25 @@ jobs:
       - name: Run complete project checks
         run: npm run check
 
+      - name: Show formatting differences after failure
+        if: failure()
+        shell: bash
+        run: |
+          npm run format -- --log-level=error >/dev/null
+          git --no-pager diff -- src tests scripts
+
       - name: Prepare browser artifacts
+        if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/release/public-hardening-candidate'
         run: npm run package:artifacts
 
       - name: Read package version
+        if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/release/public-hardening-candidate'
         id: package
         run: |
           node -e "process.stdout.write('version=' + require('./package.json').version + '\n')" >> "$GITHUB_OUTPUT"
 
       - name: Upload Firefox package
+        if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/release/public-hardening-candidate'
         uses: actions/upload-artifact@v7
         with:
           name: wormhole-connector-${{ steps.package.outputs.version }}-firefox-unsigned
@@ -58,6 +80,7 @@ jobs:
           retention-days: 14
 
       - name: Upload Chrome package
+        if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/release/public-hardening-candidate'
         uses: actions/upload-artifact@v7
         with:
           name: wormhole-connector-${{ steps.package.outputs.version }}-chrome
@@ -67,6 +90,7 @@ jobs:
           retention-days: 14
 
       - name: Upload SHA-256 checksums
+        if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/release/public-hardening-candidate'
         uses: actions/upload-artifact@v7
         with:
           name: wormhole-connector-${{ steps.package.outputs.version }}-checksums
@@ -75,6 +99,7 @@ jobs:
           retention-days: 14
 
       - name: Upload matching source archive
+        if: github.event_name == 'workflow_dispatch' || github.ref == 'refs/heads/release/public-hardening-candidate'
         uses: actions/upload-artifact@v7
         with:
           name: wormhole-connector-${{ steps.package.outputs.version }}-source

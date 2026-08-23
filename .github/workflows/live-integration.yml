@@ -33,7 +33,7 @@ concurrency:
 jobs:
   live-backends:
     name: Pi-hole v6 + AdGuard Home
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     timeout-minutes: 20
     env:
       PIHOLE_URL: http://127.0.0.1:18080
@@ -44,16 +44,19 @@ jobs:
 
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v7
+        with:
+          show-progress: false
 
       - name: Set up Node.js
-        uses: actions/setup-node@v4
+        uses: actions/setup-node@v7
         with:
-          node-version-file: .nvmrc
+          node-version: '22'
           cache: npm
+          cache-dependency-path: package-lock.json
 
       - name: Install dependencies
-        run: npm ci
+        run: npm ci --prefer-offline --no-audit --no-fund --loglevel=error
 
       - name: Start Pi-hole v6
         shell: bash

@@ -24,7 +24,9 @@ const getLocalValues = (
   }
   if (Array.isArray(keys)) {
     return Object.fromEntries(
-      keys.filter((key) => key in localValues).map((key) => [key, localValues[key]]),
+      keys
+        .filter((key) => key in localValues)
+        .map((key) => [key, localValues[key]]),
     )
   }
   return Object.fromEntries(
@@ -101,14 +103,17 @@ const piHoleRaw = async (
   const sid = await StorageService.getSid(instance.pi_uri_base!)
   assert.ok(sid)
 
-  const response = await fetch(new URL(path, getPiHoleApiBase(instance.pi_uri_base!)), {
-    ...init,
-    headers: {
-      'X-FTL-SID': sid,
-      ...(init.body ? { 'Content-Type': 'application/json' } : {}),
-      ...init.headers,
+  const response = await fetch(
+    new URL(path, getPiHoleApiBase(instance.pi_uri_base!)),
+    {
+      ...init,
+      headers: {
+        'X-FTL-SID': sid,
+        ...(init.body ? { 'Content-Type': 'application/json' } : {}),
+        ...init.headers,
+      },
     },
-  })
+  )
   if (!response.ok) {
     throw new Error(
       `Pi-hole fixture request ${path} failed with ${response.status}: ${await response.text()}`,
@@ -121,10 +126,14 @@ const createPiHoleGroup = async (
   instance: ConnectorSettingsStorage,
   name: string,
 ): Promise<{ id: number; name: string }> => {
-  const response = await piHoleRaw(instance, `groups/${encodeURIComponent(name)}`, {
-    method: 'PUT',
-    body: JSON.stringify({ comment: 'Wormhole Connector live test' }),
-  })
+  const response = await piHoleRaw(
+    instance,
+    `groups/${encodeURIComponent(name)}`,
+    {
+      method: 'PUT',
+      body: JSON.stringify({ comment: 'Wormhole Connector live test' }),
+    },
+  )
   const data = (await response.json()) as {
     groups: Array<{ id: number; name: string }>
   }

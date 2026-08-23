@@ -16,7 +16,6 @@ on:
   pull_request:
     branches:
       - dev
-      - release/public-hardening-candidate
     paths:
       - '.github/workflows/live-integration.yml'
       - 'package.json'

@@ -1,0 +1,131 @@
+name: Live backend integration
+
+on:
+  workflow_dispatch:
+  push:
+    branches:
+      - dev
+    paths:
+      - '.github/workflows/live-integration.yml'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'src/api/**'
+      - 'src/service/**'
+      - 'tests/live-backends.integration.ts'
+  pull_request:
+    branches:
+      - dev
+    paths:
+      - '.github/workflows/live-integration.yml'
+      - 'package.json'
+      - 'package-lock.json'
+      - 'src/api/**'
+      - 'src/service/**'
+      - 'tests/live-backends.integration.ts'
+
+permissions:
+  contents: read
+
+concurrency:
+  group: live-backends-${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  live-backends:
+    name: Pi-hole v6 + AdGuard Home
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    env:
+      PIHOLE_URL: http://127.0.0.1:18080
+      PIHOLE_PASSWORD: '  Wormhole Pi-hole pass  '
+      ADGUARD_URL: http://127.0.0.1:18081
+      ADGUARD_USERNAME: wormhole
+      ADGUARD_PASSWORD: 'Wormhole AGH pass 123'
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: .nvmrc
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      - name: Start Pi-hole v6
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run -d --name wormhole-pihole \
+            -p 18080:80 \
+            -e TZ=UTC \
+            -e "FTLCONF_webserver_api_password=${PIHOLE_PASSWORD}" \
+            -e FTLCONF_dns_listeningMode=all \
+            pihole/pihole:2026.07.2
+
+          for attempt in {1..90}; do
+            code="$(curl --silent --output /dev/null --write-out '%{http_code}' \
+              http://127.0.0.1:18080/api/auth || true)"
+            if [[ "$code" != "000" ]]; then
+              echo "Pi-hole API is reachable (HTTP $code)."
+              exit 0
+            fi
+            sleep 2
+          done
+
+          docker logs wormhole-pihole
+          echo 'Pi-hole did not become ready.' >&2
+          exit 1
+
+      - name: Start and configure AdGuard Home
+        shell: bash
+        run: |
+          set -euo pipefail
+          docker run -d --name wormhole-adguard \
+            -p 13000:3000 \
+            -p 18081:80 \
+            adguard/adguardhome:v0.107.79
+
+          for attempt in {1..60}; do
+            if curl --fail --silent --show-error \
+              http://127.0.0.1:13000/control/install/get_addresses \
+              >/dev/null 2>&1; then
+              break
+            fi
+            sleep 1
+          done
+
+          payload="$(node -e 'process.stdout.write(JSON.stringify({web:{ip:"0.0.0.0",port:80},dns:{ip:"0.0.0.0",port:53},username:process.env.ADGUARD_USERNAME,password:process.env.ADGUARD_PASSWORD}))')"
+          curl --fail --silent --show-error \
+            -H 'Content-Type: application/json' \
+            --data "$payload" \
+            http://127.0.0.1:13000/control/install/configure
+
+          for attempt in {1..60}; do
+            if curl --fail --silent --show-error \
+              --user "${ADGUARD_USERNAME}:${ADGUARD_PASSWORD}" \
+              http://127.0.0.1:18081/control/status >/dev/null 2>&1; then
+              echo 'AdGuard Home API is ready.'
+              exit 0
+            fi
+            sleep 1
+          done
+
+          docker logs wormhole-adguard
+          echo 'AdGuard Home did not become ready after configuration.' >&2
+          exit 1
+
+      - name: Run Wormhole live backend integration tests
+        run: npm run test:integration:live
+
+      - name: Dump backend logs on failure
+        if: failure()
+        shell: bash
+        run: |
+          echo '--- Pi-hole logs ---'
+          docker logs wormhole-pihole || true
+          echo '--- AdGuard Home logs ---'
+          docker logs wormhole-adguard || true

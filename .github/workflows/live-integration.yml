@@ -11,7 +11,7 @@ on:
       - 'package-lock.json'
       - 'src/api/**'
       - 'src/service/**'
-      - 'tests/live-backends.integration.ts'
+      - 'tests/live-*.integration.ts'
   pull_request:
     branches:
       - dev
@@ -21,7 +21,7 @@ on:
       - 'package-lock.json'
       - 'src/api/**'
       - 'src/service/**'
-      - 'tests/live-backends.integration.ts'
+      - 'tests/live-*.integration.ts'
 
 permissions:
   contents: read

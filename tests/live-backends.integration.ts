@@ -2,15 +2,67 @@ import assert from 'node:assert/strict'
 import test from 'node:test'
 import ApiList from '../src/api/enum/ApiList'
 import AdGuardHomeApiService from '../src/service/AdGuardHomeApiService'
+import GroupDomainService from '../src/service/GroupDomainService'
+import { getPiHoleApiBase } from '../src/service/PiHoleUrl'
 import PiHoleApiService from '../src/service/PiHoleApiService'
 import {
   ConnectorType,
+  StorageService,
   type ConnectorSettingsStorage,
 } from '../src/service/StorageService'
 
+const localValues: Record<string, unknown> = {}
+
+const getLocalValues = (
+  keys: string | string[] | Record<string, unknown> | null,
+): Record<string, unknown> => {
+  if (keys === null) {
+    return { ...localValues }
+  }
+  if (typeof keys === 'string') {
+    return keys in localValues ? { [keys]: localValues[keys] } : {}
+  }
+  if (Array.isArray(keys)) {
+    return Object.fromEntries(
+      keys.filter((key) => key in localValues).map((key) => [key, localValues[key]]),
+    )
+  }
+  return Object.fromEntries(
+    Object.entries(keys).map(([key, fallback]) => [
+      key,
+      key in localValues ? localValues[key] : fallback,
+    ]),
+  )
+}
+
+const localStorageArea = {
+  get(
+    keys: string | string[] | Record<string, unknown> | null,
+    callback: (items: Record<string, unknown>) => void,
+  ) {
+    callback(getLocalValues(keys))
+  },
+  async set(items: Record<string, unknown>) {
+    Object.assign(localValues, items)
+  },
+  async remove(keys: string | string[]) {
+    for (const key of Array.isArray(keys) ? keys : [keys]) {
+      delete localValues[key]
+    }
+  },
+} as unknown as chrome.storage.StorageArea
+
 Object.defineProperty(globalThis, 'chrome', {
   configurable: true,
-  value: { storage: {} },
+  value: {
+    storage: { local: localStorageArea },
+    alarms: {
+      async create() {},
+      async clear() {
+        return true
+      },
+    },
+  },
 })
 
 const requiredEnv = (name: string): string => {
@@ -27,11 +79,67 @@ const piHole: ConnectorSettingsStorage = {
   api_key: requiredEnv('PIHOLE_PASSWORD'),
 }
 
+const piHoleSecond: ConnectorSettingsStorage = {
+  connector_type: ConnectorType.piHole,
+  pi_uri_base: requiredEnv('PIHOLE_SECOND_URL'),
+  api_key: requiredEnv('PIHOLE_SECOND_PASSWORD'),
+}
+
 const adGuard: ConnectorSettingsStorage = {
   connector_type: ConnectorType.adguardHome,
   pi_uri_base: requiredEnv('ADGUARD_URL'),
   username: requiredEnv('ADGUARD_USERNAME'),
   api_key: requiredEnv('ADGUARD_PASSWORD'),
+}
+
+const piHoleRaw = async (
+  instance: ConnectorSettingsStorage,
+  path: string,
+  init: RequestInit = {},
+): Promise<Response> => {
+  await PiHoleApiService.getGroups(instance)
+  const sid = await StorageService.getSid(instance.pi_uri_base!)
+  assert.ok(sid)
+
+  const response = await fetch(new URL(path, getPiHoleApiBase(instance.pi_uri_base!)), {
+    ...init,
+    headers: {
+      'X-FTL-SID': sid,
+      ...(init.body ? { 'Content-Type': 'application/json' } : {}),
+      ...init.headers,
+    },
+  })
+  if (!response.ok) {
+    throw new Error(
+      `Pi-hole fixture request ${path} failed with ${response.status}: ${await response.text()}`,
+    )
+  }
+  return response
+}
+
+const createPiHoleGroup = async (
+  instance: ConnectorSettingsStorage,
+  name: string,
+): Promise<{ id: number; name: string }> => {
+  const response = await piHoleRaw(instance, `groups/${encodeURIComponent(name)}`, {
+    method: 'PUT',
+    body: JSON.stringify({ comment: 'Wormhole Connector live test' }),
+  })
+  const data = (await response.json()) as {
+    groups: Array<{ id: number; name: string }>
+  }
+  const group = data.groups.find((item) => item.name === name)
+  assert.ok(group)
+  return group
+}
+
+const deletePiHoleGroup = async (
+  instance: ConnectorSettingsStorage,
+  name: string,
+): Promise<void> => {
+  await piHoleRaw(instance, `groups/${encodeURIComponent(name)}`, {
+    method: 'DELETE',
+  })
 }
 
 const adGuardApiUrl = (path: string): string => {
@@ -167,6 +275,61 @@ test('Pi-hole v6 API works through Wormhole Connector services', async () => {
     }
   }
 })
+
+test(
+  'Pi-hole group names resolve independently across live instances',
+  async () => {
+    const suffix = Date.now()
+    const groupName = `Wormhole Live Shared ${suffix}`
+    const fillerName = `Wormhole Live Filler ${suffix}`
+    const domain = `wormhole-multi-${suffix}.example`
+
+    const firstGroup = await createPiHoleGroup(piHole, groupName)
+    await createPiHoleGroup(piHoleSecond, fillerName)
+    const secondGroup = await createPiHoleGroup(piHoleSecond, groupName)
+    assert.notEqual(firstGroup.id, secondGroup.id)
+
+    await StorageService.saveConnectorSettingsArray([piHole, piHoleSecond])
+
+    try {
+      const commonGroups = await PiHoleApiService.getCommonGroups()
+      assert.ok(commonGroups.some((group) => group.name === groupName))
+
+      await GroupDomainService.setDomainListForGroup(
+        ApiList.whitelist,
+        domain,
+        groupName,
+      )
+
+      const [firstDomain, secondDomain] = await Promise.all([
+        PiHoleApiService.getExactDomain(piHole, ApiList.whitelist, domain),
+        PiHoleApiService.getExactDomain(
+          piHoleSecond,
+          ApiList.whitelist,
+          domain,
+        ),
+      ])
+      assert.deepEqual(firstDomain?.groups, [firstGroup.id])
+      assert.deepEqual(secondDomain?.groups, [secondGroup.id])
+    } finally {
+      await Promise.allSettled([
+        PiHoleApiService.deleteExactDomain(piHole, ApiList.whitelist, domain),
+        PiHoleApiService.deleteExactDomain(
+          piHoleSecond,
+          ApiList.whitelist,
+          domain,
+        ),
+      ])
+      await Promise.allSettled([
+        deletePiHoleGroup(piHole, groupName),
+        deletePiHoleGroup(piHoleSecond, groupName),
+        deletePiHoleGroup(piHoleSecond, fillerName),
+      ])
+      await StorageService.saveConnectorSettingsArray([])
+      await PiHoleApiService.endSessions([piHole, piHoleSecond])
+    }
+  },
+)
 
 test(
   'AdGuard Home global and client-specific operations work through Wormhole Connector services',

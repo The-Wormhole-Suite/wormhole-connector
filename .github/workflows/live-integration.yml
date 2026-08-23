@@ -38,6 +38,8 @@ jobs:
     env:
       PIHOLE_URL: http://127.0.0.1:18080
       PIHOLE_PASSWORD: '  Wormhole Pi-hole pass  '
+      PIHOLE_SECOND_URL: http://127.0.0.1:18082
+      PIHOLE_SECOND_PASSWORD: 'Wormhole second Pi-hole pass'
       ADGUARD_URL: http://127.0.0.1:18081
       ADGUARD_USERNAME: wormhole
       ADGUARD_PASSWORD: 'Wormhole AGH pass 123'
@@ -58,7 +60,7 @@ jobs:
       - name: Install dependencies
         run: npm ci --prefer-offline --no-audit --no-fund --loglevel=error
 
-      - name: Start Pi-hole v6
+      - name: Start Pi-hole v6 pair
         shell: bash
         run: |
           set -euo pipefail
@@ -69,19 +71,32 @@ jobs:
             -e FTLCONF_dns_listeningMode=all \
             pihole/pihole:2026.07.2
 
-          for attempt in {1..90}; do
-            code="$(curl --silent --output /dev/null --write-out '%{http_code}' \
-              http://127.0.0.1:18080/api/auth || true)"
-            if [[ "$code" != "000" ]]; then
-              echo "Pi-hole API is reachable (HTTP $code)."
-              exit 0
-            fi
-            sleep 2
-          done
+          docker run -d --name wormhole-pihole-2 \
+            -p 18082:80 \
+            -e TZ=UTC \
+            -e "FTLCONF_webserver_api_password=${PIHOLE_SECOND_PASSWORD}" \
+            -e FTLCONF_dns_listeningMode=all \
+            pihole/pihole:2026.07.2
 
-          docker logs wormhole-pihole
-          echo 'Pi-hole did not become ready.' >&2
-          exit 1
+          for url in "${PIHOLE_URL}" "${PIHOLE_SECOND_URL}"; do
+            ready=false
+            for attempt in {1..90}; do
+              code="$(curl --silent --output /dev/null --write-out '%{http_code}' \
+                "${url}/api/auth" || true)"
+              if [[ "$code" != "000" ]]; then
+                echo "Pi-hole API at ${url} is reachable (HTTP $code)."
+                ready=true
+                break
+              fi
+              sleep 2
+            done
+            if [[ "$ready" != true ]]; then
+              docker logs wormhole-pihole || true
+              docker logs wormhole-pihole-2 || true
+              echo "Pi-hole at ${url} did not become ready." >&2
+              exit 1
+            fi
+          done
 
       - name: Start and configure AdGuard Home
         shell: bash
@@ -128,7 +143,9 @@ jobs:
         if: failure()
         shell: bash
         run: |
-          echo '--- Pi-hole logs ---'
+          echo '--- Pi-hole 1 logs ---'
           docker logs wormhole-pihole || true
+          echo '--- Pi-hole 2 logs ---'
+          docker logs wormhole-pihole-2 || true
           echo '--- AdGuard Home logs ---'
           docker logs wormhole-adguard || true

@@ -40,6 +40,13 @@ jobs:
       - name: Run complete project checks
         run: npm run check
 
+      - name: Show formatting differences after failure
+        if: failure()
+        shell: bash
+        run: |
+          npm run format -- --log-level=error >/dev/null
+          git --no-pager diff -- src tests scripts
+
       - name: Prepare browser artifacts
         run: npm run package:artifacts
 

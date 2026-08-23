@@ -254,17 +254,9 @@ test('Pi-hole v6 API works through Wormhole Connector services', async () => {
     assert.equal(added?.domain, domain)
     assert.equal(added?.enabled, true)
 
-    await PiHoleApiService.deleteExactDomain(
-      piHole,
-      ApiList.whitelist,
-      domain,
-    )
+    await PiHoleApiService.deleteExactDomain(piHole, ApiList.whitelist, domain)
     assert.equal(
-      await PiHoleApiService.getExactDomain(
-        piHole,
-        ApiList.whitelist,
-        domain,
-      ),
+      await PiHoleApiService.getExactDomain(piHole, ApiList.whitelist, domain),
       undefined,
     )
   } finally {
@@ -285,171 +277,154 @@ test('Pi-hole v6 API works through Wormhole Connector services', async () => {
   }
 })
 
-test(
-  'Pi-hole group names resolve independently across live instances',
-  async () => {
-    const suffix = Date.now()
-    const groupName = `Wormhole Live Shared ${suffix}`
-    const fillerName = `Wormhole Live Filler ${suffix}`
-    const domain = `wormhole-multi-${suffix}.example`
+test('Pi-hole group names resolve independently across live instances', async () => {
+  const suffix = Date.now()
+  const groupName = `Wormhole Live Shared ${suffix}`
+  const fillerName = `Wormhole Live Filler ${suffix}`
+  const domain = `wormhole-multi-${suffix}.example`
 
-    const firstGroup = await createPiHoleGroup(piHole, groupName)
-    await createPiHoleGroup(piHoleSecond, fillerName)
-    const secondGroup = await createPiHoleGroup(piHoleSecond, groupName)
-    assert.notEqual(firstGroup.id, secondGroup.id)
+  const firstGroup = await createPiHoleGroup(piHole, groupName)
+  await createPiHoleGroup(piHoleSecond, fillerName)
+  const secondGroup = await createPiHoleGroup(piHoleSecond, groupName)
+  assert.notEqual(firstGroup.id, secondGroup.id)
 
-    await StorageService.saveConnectorSettingsArray([piHole, piHoleSecond])
+  await StorageService.saveConnectorSettingsArray([piHole, piHoleSecond])
 
-    try {
-      const commonGroups = await PiHoleApiService.getCommonGroups()
-      assert.ok(commonGroups.some((group) => group.name === groupName))
+  try {
+    const commonGroups = await PiHoleApiService.getCommonGroups()
+    assert.ok(commonGroups.some((group) => group.name === groupName))
 
-      await GroupDomainService.setDomainListForGroup(
+    await GroupDomainService.setDomainListForGroup(
+      ApiList.whitelist,
+      domain,
+      groupName,
+    )
+
+    const [firstDomain, secondDomain] = await Promise.all([
+      PiHoleApiService.getExactDomain(piHole, ApiList.whitelist, domain),
+      PiHoleApiService.getExactDomain(piHoleSecond, ApiList.whitelist, domain),
+    ])
+    assert.deepEqual(firstDomain?.groups, [firstGroup.id])
+    assert.deepEqual(secondDomain?.groups, [secondGroup.id])
+  } finally {
+    await Promise.allSettled([
+      PiHoleApiService.deleteExactDomain(piHole, ApiList.whitelist, domain),
+      PiHoleApiService.deleteExactDomain(
+        piHoleSecond,
         ApiList.whitelist,
         domain,
-        groupName,
-      )
+      ),
+    ])
+    await Promise.allSettled([
+      deletePiHoleGroup(piHole, groupName),
+      deletePiHoleGroup(piHoleSecond, groupName),
+      deletePiHoleGroup(piHoleSecond, fillerName),
+    ])
+    await StorageService.saveConnectorSettingsArray([])
+    await PiHoleApiService.endSessions([piHole, piHoleSecond])
+  }
+})
 
-      const [firstDomain, secondDomain] = await Promise.all([
-        PiHoleApiService.getExactDomain(piHole, ApiList.whitelist, domain),
-        PiHoleApiService.getExactDomain(
-          piHoleSecond,
-          ApiList.whitelist,
-          domain,
-        ),
-      ])
-      assert.deepEqual(firstDomain?.groups, [firstGroup.id])
-      assert.deepEqual(secondDomain?.groups, [secondGroup.id])
-    } finally {
-      await Promise.allSettled([
-        PiHoleApiService.deleteExactDomain(piHole, ApiList.whitelist, domain),
-        PiHoleApiService.deleteExactDomain(
-          piHoleSecond,
-          ApiList.whitelist,
-          domain,
-        ),
-      ])
-      await Promise.allSettled([
-        deletePiHoleGroup(piHole, groupName),
-        deletePiHoleGroup(piHoleSecond, groupName),
-        deletePiHoleGroup(piHoleSecond, fillerName),
-      ])
-      await StorageService.saveConnectorSettingsArray([])
-      await PiHoleApiService.endSessions([piHole, piHoleSecond])
-    }
-  },
-)
+test('AdGuard Home global and client-specific operations work through Wormhole Connector services', async () => {
+  const domain = `wormhole-live-${Date.now()}.example`
+  const clientName = `wormhole-live-client-${Date.now()}`
+  const originalRules = await AdGuardHomeApiService.getUserRules(adGuard)
+  const initialStatus = await AdGuardHomeApiService.getStatusFor(adGuard)
 
-test(
-  'AdGuard Home global and client-specific operations work through Wormhole Connector services',
-  async () => {
-    const domain = `wormhole-live-${Date.now()}.example`
-    const clientName = `wormhole-live-client-${Date.now()}`
-    const originalRules = await AdGuardHomeApiService.getUserRules(adGuard)
-    const initialStatus = await AdGuardHomeApiService.getStatusFor(adGuard)
+  assert.equal(initialStatus.running, true)
+  assert.ok(initialStatus.version)
 
-    assert.equal(initialStatus.running, true)
-    assert.ok(initialStatus.version)
+  try {
+    await AdGuardHomeApiService.setProtectionFor(adGuard, false, null)
+    assert.equal(
+      (await AdGuardHomeApiService.getStatusFor(adGuard)).protection_enabled,
+      false,
+    )
+    await AdGuardHomeApiService.setProtectionFor(adGuard, true, null)
+    assert.equal(
+      (await AdGuardHomeApiService.getStatusFor(adGuard)).protection_enabled,
+      true,
+    )
 
-    try {
-      await AdGuardHomeApiService.setProtectionFor(adGuard, false, null)
-      assert.equal(
-        (await AdGuardHomeApiService.getStatusFor(adGuard)).protection_enabled,
-        false,
-      )
-      await AdGuardHomeApiService.setProtectionFor(adGuard, true, null)
-      assert.equal(
-        (await AdGuardHomeApiService.getStatusFor(adGuard)).protection_enabled,
-        true,
-      )
-
-      const globalMutation = await AdGuardHomeApiService.prepareRuleMutation(
-        adGuard,
-        ApiList.blacklist,
-        domain,
-      )
-      await AdGuardHomeApiService.applyRuleMutation(adGuard, globalMutation)
-      assert.deepEqual(
-        await AdGuardHomeApiService.getUserRules(adGuard),
-        globalMutation.expectedRules,
-      )
-      await AdGuardHomeApiService.restoreRuleMutation(adGuard, globalMutation)
-
-      await addAdGuardClient(clientName)
-      const client = await AdGuardHomeApiService.getClient(adGuard, clientName)
-      assert.ok(client)
-
-      const disableClient = AdGuardHomeApiService.prepareClientMutation(
-        client,
-        false,
-      )
-      await AdGuardHomeApiService.applyClientMutation(adGuard, disableClient)
-      const disabledClient = await AdGuardHomeApiService.getClient(
-        adGuard,
-        clientName,
-      )
-      assert.equal(disabledClient?.use_global_settings, false)
-      assert.equal(disabledClient?.filtering_enabled, false)
-      await AdGuardHomeApiService.restoreClientMutation(adGuard, disableClient)
-
-      const clientRuleMutation =
-        await AdGuardHomeApiService.prepareRuleMutation(
-          adGuard,
-          ApiList.whitelist,
-          domain,
-          clientName,
-        )
-      await AdGuardHomeApiService.applyRuleMutation(adGuard, clientRuleMutation)
-      assert.ok(
-        (await AdGuardHomeApiService.getUserRules(adGuard)).includes(
-          clientRuleMutation.allowRule,
-        ),
-      )
-      await AdGuardHomeApiService.restoreRuleMutation(
-        adGuard,
-        clientRuleMutation,
-      )
-    } finally {
-      await setAdGuardRules(originalRules)
-      try {
-        await deleteAdGuardClient(clientName)
-      } catch {
-        // Best-effort cleanup when client creation failed before completion.
-      }
-      await AdGuardHomeApiService.setProtectionFor(
-        adGuard,
-        initialStatus.protection_enabled,
-        null,
-      )
-    }
-  },
-)
-
-test(
-  'AdGuard Home concurrent foreign rule changes are never overwritten',
-  async () => {
-    const domain = `wormhole-concurrency-${Date.now()}.example`
-    const foreignRule = `||foreign-${Date.now()}.example^`
-    const originalRules = await AdGuardHomeApiService.getUserRules(adGuard)
-    const mutation = await AdGuardHomeApiService.prepareRuleMutation(
+    const globalMutation = await AdGuardHomeApiService.prepareRuleMutation(
       adGuard,
       ApiList.blacklist,
       domain,
     )
+    await AdGuardHomeApiService.applyRuleMutation(adGuard, globalMutation)
+    assert.deepEqual(
+      await AdGuardHomeApiService.getUserRules(adGuard),
+      globalMutation.expectedRules,
+    )
+    await AdGuardHomeApiService.restoreRuleMutation(adGuard, globalMutation)
 
+    await addAdGuardClient(clientName)
+    const client = await AdGuardHomeApiService.getClient(adGuard, clientName)
+    assert.ok(client)
+
+    const disableClient = AdGuardHomeApiService.prepareClientMutation(
+      client,
+      false,
+    )
+    await AdGuardHomeApiService.applyClientMutation(adGuard, disableClient)
+    const disabledClient = await AdGuardHomeApiService.getClient(
+      adGuard,
+      clientName,
+    )
+    assert.equal(disabledClient?.use_global_settings, false)
+    assert.equal(disabledClient?.filtering_enabled, false)
+    await AdGuardHomeApiService.restoreClientMutation(adGuard, disableClient)
+
+    const clientRuleMutation = await AdGuardHomeApiService.prepareRuleMutation(
+      adGuard,
+      ApiList.whitelist,
+      domain,
+      clientName,
+    )
+    await AdGuardHomeApiService.applyRuleMutation(adGuard, clientRuleMutation)
+    assert.ok(
+      (await AdGuardHomeApiService.getUserRules(adGuard)).includes(
+        clientRuleMutation.allowRule,
+      ),
+    )
+    await AdGuardHomeApiService.restoreRuleMutation(adGuard, clientRuleMutation)
+  } finally {
+    await setAdGuardRules(originalRules)
     try {
-      await setAdGuardRules([...originalRules, foreignRule])
-
-      await assert.rejects(
-        AdGuardHomeApiService.applyRuleMutation(adGuard, mutation),
-        /changed concurrently/,
-      )
-
-      const after = await AdGuardHomeApiService.getUserRules(adGuard)
-      assert.ok(after.includes(foreignRule))
-      assert.ok(!after.includes(mutation.blockRule))
-    } finally {
-      await setAdGuardRules(originalRules)
+      await deleteAdGuardClient(clientName)
+    } catch {
+      // Best-effort cleanup when client creation failed before completion.
     }
-  },
-)
+    await AdGuardHomeApiService.setProtectionFor(
+      adGuard,
+      initialStatus.protection_enabled,
+      null,
+    )
+  }
+})
+
+test('AdGuard Home concurrent foreign rule changes are never overwritten', async () => {
+  const domain = `wormhole-concurrency-${Date.now()}.example`
+  const foreignRule = `||foreign-${Date.now()}.example^`
+  const originalRules = await AdGuardHomeApiService.getUserRules(adGuard)
+  const mutation = await AdGuardHomeApiService.prepareRuleMutation(
+    adGuard,
+    ApiList.blacklist,
+    domain,
+  )
+
+  try {
+    await setAdGuardRules([...originalRules, foreignRule])
+
+    await assert.rejects(
+      AdGuardHomeApiService.applyRuleMutation(adGuard, mutation),
+      /changed concurrently/,
+    )
+
+    const after = await AdGuardHomeApiService.getUserRules(adGuard)
+    assert.ok(after.includes(foreignRule))
+    assert.ok(!after.includes(mutation.blockRule))
+  } finally {
+    await setAdGuardRules(originalRules)
+  }
+})

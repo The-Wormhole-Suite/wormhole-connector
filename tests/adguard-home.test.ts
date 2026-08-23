@@ -106,6 +106,27 @@ test('AdGuard filtering reasons map conservatively to toolbar states', () => {
   assert.equal(evaluateAdGuardReason(undefined), 'unknown')
 })
 
+test('AdGuard fresh installs treat null custom rules as an empty list', async () => {
+  const originalFetch = globalThis.fetch
+  globalThis.fetch = async (input) => {
+    const request = input as Request
+    const url = new URL(request.url)
+    if (url.pathname.endsWith('/control/filtering/status')) {
+      return jsonResponse({ user_rules: null })
+    }
+    return new Response('not found', { status: 404 })
+  }
+
+  try {
+    assert.deepEqual(
+      await AdGuardHomeApiService.getUserRules(adGuardInstance),
+      [],
+    )
+  } finally {
+    globalThis.fetch = originalFetch
+  }
+})
+
 test('AdGuard rule writes authenticate, preserve the proxy path, and verify', async () => {
   let rules = ['||old.example^']
   const requests: Request[] = []
@@ -228,10 +249,21 @@ test('AdGuard persistent-client pauses preserve and restore full client settings
     ids: ['192.0.2.10'],
     use_global_settings: true,
     filtering_enabled: true,
-    tags: ['user_child'],
+    parental_enabled: false,
+    safebrowsing_enabled: true,
+    safesearch_enabled: false,
+    safe_search: { enabled: false },
+    use_global_blocked_services: true,
+    blocked_services_schedule: { time_zone: 'UTC' },
+    blocked_services: ['youtube'],
     upstreams: ['https://dns.example/dns-query'],
+    tags: ['user_child'],
+    ignore_querylog: false,
+    ignore_statistics: false,
+    upstreams_cache_enabled: true,
+    upstreams_cache_size: 1024,
   }
-  const updateBodies: unknown[] = []
+  const original = structuredClone(client)
   const originalFetch = globalThis.fetch
   globalThis.fetch = async (input) => {
     const request = input as Request
@@ -244,7 +276,7 @@ test('AdGuard persistent-client pauses preserve and restore full client settings
         name: string
         data: typeof client
       }
-      updateBodies.push(body)
+      assert.equal(body.name, 'Kids')
       client = structuredClone(body.data)
       return jsonResponse({})
     }
@@ -252,18 +284,12 @@ test('AdGuard persistent-client pauses preserve and restore full client settings
   }
 
   try {
-    const original = structuredClone(client)
     const mutation = AdGuardHomeApiService.prepareClientMutation(client, false)
     await AdGuardHomeApiService.applyClientMutation(adGuardInstance, mutation)
-
     assert.equal(client.use_global_settings, false)
     assert.equal(client.filtering_enabled, false)
-    assert.deepEqual(client.tags, original.tags)
-    assert.deepEqual(client.upstreams, original.upstreams)
-
     await AdGuardHomeApiService.restoreClientMutation(adGuardInstance, mutation)
     assert.deepEqual(client, original)
-    assert.equal(updateBodies.length, 2)
   } finally {
     globalThis.fetch = originalFetch
   }

@@ -27,7 +27,7 @@ export type AdGuardCheckHostResponse = {
 
 export type AdGuardFilterStatus = {
   enabled?: boolean
-  user_rules?: string[]
+  user_rules?: string[] | null
 }
 
 export type AdGuardClient = {

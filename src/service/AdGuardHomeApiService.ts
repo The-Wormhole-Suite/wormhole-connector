@@ -133,6 +133,9 @@ export default class AdGuardHomeApiService {
       await this.getAxiosInstance(instance).get<AdGuardFilterStatus>(
         'filtering/status',
       )
+    if (response.data.user_rules === null) {
+      return []
+    }
     if (!Array.isArray(response.data.user_rules)) {
       throw new Error('AdGuard Home did not return its custom filtering rules')
     }
@@ -283,25 +286,25 @@ export default class AdGuardHomeApiService {
     this.assertValidInstance(instance)
     return axios.create({
       baseURL: getAdGuardHomeApiBase(instance.pi_uri_base!),
-      adapter: 'fetch',
-      withCredentials: false,
-      auth: {
-        username: instance.username!,
-        password: instance.api_key!,
+      headers: {
+        Authorization: `Basic ${btoa(`${instance.username}:${instance.api_key}`)}`,
       },
+      transformRequest: axios.defaults.transformRequest,
+      transformResponse: axios.defaults.transformResponse,
+      adapter: 'fetch',
     })
   }
 
-  private static assertValidInstance(instance: ConnectorSettingsStorage): void {
+  private static assertValidInstance(
+    instance: ConnectorSettingsStorage,
+  ): void {
     if (
       getConnectorType(instance) !== ConnectorType.adguardHome ||
       !instance.pi_uri_base ||
       !instance.username ||
-      typeof instance.api_key === 'undefined'
+      typeof instance.api_key !== 'string'
     ) {
-      throw new Error(
-        'AdGuard Home address, username, and password are required',
-      )
+      throw new Error('Invalid AdGuard Home connector configuration')
     }
   }
 }

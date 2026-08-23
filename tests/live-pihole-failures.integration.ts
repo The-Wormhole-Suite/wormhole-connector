@@ -196,9 +196,12 @@ const startPiHoleWriteFailureProxy = async (
       const headers = new Headers()
       for (const [name, value] of Object.entries(request.headers)) {
         if (
-          ['host', 'connection', 'content-length', 'transfer-encoding'].includes(
-            name,
-          ) ||
+          [
+            'host',
+            'connection',
+            'content-length',
+            'transfer-encoding',
+          ].includes(name) ||
           typeof value === 'undefined'
         ) {
           continue

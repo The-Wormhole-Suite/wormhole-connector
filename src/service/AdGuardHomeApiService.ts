@@ -286,25 +286,25 @@ export default class AdGuardHomeApiService {
     this.assertValidInstance(instance)
     return axios.create({
       baseURL: getAdGuardHomeApiBase(instance.pi_uri_base!),
-      headers: {
-        Authorization: `Basic ${btoa(`${instance.username}:${instance.api_key}`)}`,
-      },
-      transformRequest: axios.defaults.transformRequest,
-      transformResponse: axios.defaults.transformResponse,
       adapter: 'fetch',
+      withCredentials: false,
+      auth: {
+        username: instance.username!,
+        password: instance.api_key!,
+      },
     })
   }
 
-  private static assertValidInstance(
-    instance: ConnectorSettingsStorage,
-  ): void {
+  private static assertValidInstance(instance: ConnectorSettingsStorage): void {
     if (
       getConnectorType(instance) !== ConnectorType.adguardHome ||
       !instance.pi_uri_base ||
       !instance.username ||
-      typeof instance.api_key !== 'string'
+      typeof instance.api_key === 'undefined'
     ) {
-      throw new Error('Invalid AdGuard Home connector configuration')
+      throw new Error(
+        'AdGuard Home address, username, and password are required',
+      )
     }
   }
 }

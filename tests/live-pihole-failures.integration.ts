@@ -1,5 +1,4 @@
 import assert from 'node:assert/strict'
-import { createServer } from 'node:http'
 import test from 'node:test'
 import ApiList from '../src/api/enum/ApiList'
 import GroupDomainService from '../src/service/GroupDomainService'
@@ -166,100 +165,39 @@ const deleteDomainBestEffort = async (
   }
 }
 
-const startPiHoleWriteFailureProxy = async (
-  upstreamBase: string,
-): Promise<{
-  url: string
+const installPiHoleWriteFailureInterceptor = (): {
   getRejectedWrites: () => number
-  close: () => Promise<void>
-}> => {
+  restore: () => void
+} => {
+  const originalFetch = globalThis.fetch
+  const secondOrigin = new URL(piHoleSecond.pi_uri_base!).origin
   let rejectedWrites = 0
-  const server = createServer(async (request, response) => {
-    try {
-      const method = (request.method ?? 'GET').toUpperCase()
-      const target = new URL(request.url ?? '/', upstreamBase)
-      if (
-        target.pathname.startsWith('/api/domains/') &&
-        ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)
-      ) {
-        rejectedWrites += 1
-        response.writeHead(503, { 'Content-Type': 'text/plain' })
-        response.end('Injected Pi-hole domain write failure')
-        return
-      }
 
-      const chunks: Buffer[] = []
-      for await (const chunk of request) {
-        chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk))
-      }
+  globalThis.fetch = async (input, init) => {
+    const request = input instanceof Request ? input : new Request(input, init)
+    const url = new URL(request.url)
+    const method = request.method.toUpperCase()
 
-      const headers = new Headers()
-      for (const [name, value] of Object.entries(request.headers)) {
-        if (
-          [
-            'host',
-            'connection',
-            'content-length',
-            'transfer-encoding',
-          ].includes(name) ||
-          typeof value === 'undefined'
-        ) {
-          continue
-        }
-        if (Array.isArray(value)) {
-          for (const item of value) {
-            headers.append(name, item)
-          }
-        } else {
-          headers.set(name, value)
-        }
-      }
-
-      const upstreamResponse = await fetch(target, {
-        method,
-        headers,
-        body:
-          method === 'GET' || method === 'HEAD'
-            ? undefined
-            : Buffer.concat(chunks),
-        redirect: 'manual',
+    if (
+      url.origin === secondOrigin &&
+      url.pathname.startsWith('/api/domains/') &&
+      ['POST', 'PUT', 'PATCH', 'DELETE'].includes(method)
+    ) {
+      rejectedWrites += 1
+      return new Response('Injected Pi-hole domain write failure', {
+        status: 503,
+        headers: { 'Content-Type': 'text/plain' },
       })
-      response.statusCode = upstreamResponse.status
-      const contentType = upstreamResponse.headers.get('content-type')
-      if (contentType) {
-        response.setHeader('Content-Type', contentType)
-      }
-      response.end(Buffer.from(await upstreamResponse.arrayBuffer()))
-    } catch (reason) {
-      response.writeHead(502, { 'Content-Type': 'text/plain' })
-      response.end(reason instanceof Error ? reason.message : String(reason))
     }
-  })
 
-  await new Promise<void>((resolve, reject) => {
-    server.once('error', reject)
-    server.listen(0, '127.0.0.1', () => resolve())
-  })
-
-  const address = server.address()
-  if (!address || typeof address === 'string') {
-    server.close()
-    throw new Error('Could not determine Pi-hole failure proxy address')
+    return originalFetch(input, init)
   }
 
   return {
-    url: `http://127.0.0.1:${address.port}`,
     getRejectedWrites: () => rejectedWrites,
-    close: () =>
-      new Promise<void>((resolve, reject) => {
-        server.close((reason) => {
-          if (reason) {
-            reject(reason)
-          } else {
-            resolve()
-          }
-        })
-      }),
+    restore: () => {
+      globalThis.fetch = originalFetch
+    },
   }
 }
 
@@ -349,12 +287,8 @@ test('partial write failure on the second Pi-hole rolls the first back', async (
 
   await createPiHoleGroup(piHole, groupName)
   await createPiHoleGroup(piHoleSecond, groupName)
-  const proxy = await startPiHoleWriteFailureProxy(piHoleSecond.pi_uri_base!)
-  const proxiedSecond: ConnectorSettingsStorage = {
-    ...piHoleSecond,
-    pi_uri_base: proxy.url,
-  }
-  await StorageService.saveConnectorSettingsArray([piHole, proxiedSecond])
+  const interceptor = installPiHoleWriteFailureInterceptor()
+  await StorageService.saveConnectorSettingsArray([piHole, piHoleSecond])
 
   try {
     await expectMultiInstanceFailure(
@@ -363,11 +297,11 @@ test('partial write failure on the second Pi-hole rolls the first back', async (
         domain,
         groupName,
       ),
-      proxy.url,
+      piHoleSecond.pi_uri_base!,
       'apply',
     )
 
-    assert.ok(proxy.getRejectedWrites() >= 1)
+    assert.ok(interceptor.getRejectedWrites() >= 1)
     assert.equal(
       await PiHoleApiService.getExactDomain(piHole, ApiList.whitelist, domain),
       undefined,
@@ -381,6 +315,7 @@ test('partial write failure on the second Pi-hole rolls the first back', async (
       undefined,
     )
   } finally {
+    interceptor.restore()
     await StorageService.saveConnectorSettingsArray([])
     await Promise.allSettled([
       deleteDomainBestEffort(piHole, domain),
@@ -388,8 +323,6 @@ test('partial write failure on the second Pi-hole rolls the first back', async (
       deletePiHoleGroup(piHole, groupName),
       deletePiHoleGroup(piHoleSecond, groupName),
     ])
-    await PiHoleApiService.endSession(proxiedSecond)
-    await proxy.close()
     await PiHoleApiService.endSessions([piHole, piHoleSecond])
   }
 })

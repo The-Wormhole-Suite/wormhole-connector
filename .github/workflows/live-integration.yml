@@ -33,6 +33,13 @@ concurrency:
 
 jobs:
   live-backends:
+    # Dependabot's named development group is constrained to devDependencies in
+    # dependabot.yml. Unknown, security, runtime and human-authored changes still
+    # fail closed into the live integration lane.
+    if: >-
+      github.event_name != 'pull_request' ||
+      github.actor != 'dependabot[bot]' ||
+      !contains(github.head_ref, '/development-minor-and-patch-')
     name: Pi-hole v6 + AdGuard Home
     runs-on: ubuntu-24.04
     timeout-minutes: 20

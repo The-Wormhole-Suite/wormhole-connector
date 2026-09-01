@@ -13,6 +13,7 @@ on:
       - 'package-lock.json'
 
 permissions:
+  actions: write
   contents: write
   pull-requests: read
 
@@ -91,6 +92,7 @@ jobs:
         run: node scripts/generate-third-party-notices.mjs
 
       - name: Update Dependabot branch if notices changed
+        id: update
         env:
           GH_TOKEN: ${{ github.token }}
           HEAD_REF: ${{ github.event.pull_request.head.ref }}
@@ -108,6 +110,8 @@ jobs:
 
           if cmp -s THIRD_PARTY_NOTICES.txt /tmp/current-notices.txt; then
             echo 'THIRD_PARTY_NOTICES.txt is already current.'
+            echo 'changed=false' >> "$GITHUB_OUTPUT"
+            echo "head_sha=${HEAD_SHA}" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
@@ -122,7 +126,7 @@ jobs:
             --jq '.sha')"
           base64 -w0 THIRD_PARTY_NOTICES.txt > /tmp/notices.b64
 
-          jq -n \
+          response="$(jq -n \
             --arg message 'chore: refresh third-party notices' \
             --rawfile content /tmp/notices.b64 \
             --arg branch "$HEAD_REF" \
@@ -130,7 +134,78 @@ jobs:
             '{message: $message, content: $content, branch: $branch, sha: $sha}' \
             | gh api --method PUT \
                 "repos/${GITHUB_REPOSITORY}/contents/THIRD_PARTY_NOTICES.txt" \
-                --input - \
-                >/dev/null
+                --input -)"
+
+          new_head="$(jq -r '.commit.sha' <<< "$response")"
+          if [[ ! "$new_head" =~ ^[0-9a-f]{40}$ ]]; then
+            echo 'GitHub did not return a valid commit SHA for the notice update.' >&2
+            exit 1
+          fi
 
           echo 'Updated THIRD_PARTY_NOTICES.txt on the Dependabot branch.'
+          echo 'changed=true' >> "$GITHUB_OUTPUT"
+          echo "head_sha=${new_head}" >> "$GITHUB_OUTPUT"
+
+      - name: Approve CI for trusted generated commit
+        if: steps.update.outputs.changed == 'true'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GENERATED_HEAD_SHA: ${{ steps.update.outputs.head_sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          expected_workflows=(
+            'CI'
+            'CodeQL'
+            'Live backend integration'
+          )
+
+          for attempt in {1..20}; do
+            runs="$(gh api \
+              "repos/${GITHUB_REPOSITORY}/actions/runs?head_sha=${GENERATED_HEAD_SHA}&event=pull_request&per_page=100")"
+
+            pending_ids=()
+            unexpected=()
+            while IFS=$'\t' read -r run_id run_name conclusion; do
+              [[ -z "$run_id" ]] && continue
+              if [[ "$conclusion" != 'action_required' ]]; then
+                continue
+              fi
+
+              allowed=false
+              for expected in "${expected_workflows[@]}"; do
+                if [[ "$run_name" == "$expected" ]]; then
+                  allowed=true
+                  break
+                fi
+              done
+
+              if [[ "$allowed" == true ]]; then
+                pending_ids+=("$run_id")
+              else
+                unexpected+=("${run_name} (${run_id})")
+              fi
+            done < <(jq -r '.workflow_runs[] | [.id, .name, (.conclusion // "")] | @tsv' <<< "$runs")
+
+            if (( ${#unexpected[@]} > 0 )); then
+              echo 'Refusing to approve unexpected action-required workflows:' >&2
+              printf '  %s\n' "${unexpected[@]}" >&2
+              exit 1
+            fi
+
+            if (( ${#pending_ids[@]} > 0 )); then
+              for run_id in "${pending_ids[@]}"; do
+                gh api --method POST \
+                  "repos/${GITHUB_REPOSITORY}/actions/runs/${run_id}/approve" \
+                  >/dev/null
+                echo "Approved workflow run ${run_id}."
+              done
+              exit 0
+            fi
+
+            sleep 2
+          done
+
+          echo "No action-required CI runs appeared for generated head ${GENERATED_HEAD_SHA}." >&2
+          exit 1

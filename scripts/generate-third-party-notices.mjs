@@ -13,7 +13,9 @@ const bundledToolingRoots = [
 ]
 const rootPackages = new Set([
   ...Object.keys(packageJson.dependencies ?? {}),
-  ...bundledToolingRoots,
+  ...bundledToolingRoots.filter(
+    (packageName) => packageLock.packages[`node_modules/${packageName}`],
+  ),
 ])
 const packagePaths = collectDependencyGraph(rootPackages, packageLock.packages)
 const sections = []

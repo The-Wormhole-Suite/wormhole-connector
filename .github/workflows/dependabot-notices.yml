@@ -1,0 +1,136 @@
+name: Refresh Dependabot notices
+
+on:
+  pull_request_target:
+    types:
+      - opened
+      - synchronize
+      - reopened
+    branches:
+      - dev
+    paths:
+      - 'package.json'
+      - 'package-lock.json'
+
+permissions:
+  contents: write
+  pull-requests: read
+
+concurrency:
+  group: dependabot-notices-${{ github.event.pull_request.number }}
+  cancel-in-progress: true
+
+jobs:
+  refresh:
+    if: >-
+      github.event.pull_request.user.login == 'dependabot[bot]' &&
+      github.event.pull_request.head.repo.full_name == github.repository &&
+      startsWith(github.head_ref, 'dependabot/npm_and_yarn/')
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out trusted default-branch tooling
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          show-progress: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '22'
+
+      - name: Validate Dependabot change scope
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          changed_files="$(gh api --paginate \
+            "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}/files" \
+            --jq '.[] | .filename')"
+
+          unexpected="$(printf '%s\n' "$changed_files" \
+            | grep -Ev '^(package\.json|package-lock\.json|THIRD_PARTY_NOTICES\.txt)$' \
+            || true)"
+
+          if [[ -n "$unexpected" ]]; then
+            echo 'Refusing privileged notice refresh because the Dependabot PR changes unexpected files:' >&2
+            printf '%s\n' "$unexpected" >&2
+            exit 1
+          fi
+
+          if ! printf '%s\n' "$changed_files" | grep -qx 'package-lock.json'; then
+            echo 'No package-lock.json change; nothing to refresh.'
+            exit 1
+          fi
+
+      - name: Load Dependabot package metadata as data
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          for file in package.json package-lock.json; do
+            gh api "repos/${GITHUB_REPOSITORY}/contents/${file}?ref=${HEAD_SHA}" \
+              --jq '.content' \
+              | tr -d '\n' \
+              | base64 --decode \
+              > "$file"
+          done
+
+      - name: Install dependency metadata without scripts
+        run: npm ci --ignore-scripts --prefer-offline --no-audit --no-fund --loglevel=error
+
+      - name: Generate current third-party notices
+        run: node scripts/generate-third-party-notices.mjs
+
+      - name: Update Dependabot branch if notices changed
+        env:
+          GH_TOKEN: ${{ github.token }}
+          HEAD_REF: ${{ github.event.pull_request.head.ref }}
+          HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PR_NUMBER: ${{ github.event.pull_request.number }}
+        shell: bash
+        run: |
+          set -euo pipefail
+
+          gh api "repos/${GITHUB_REPOSITORY}/contents/THIRD_PARTY_NOTICES.txt?ref=${HEAD_SHA}" \
+            --jq '.content' \
+            | tr -d '\n' \
+            | base64 --decode \
+            > /tmp/current-notices.txt
+
+          if cmp -s THIRD_PARTY_NOTICES.txt /tmp/current-notices.txt; then
+            echo 'THIRD_PARTY_NOTICES.txt is already current.'
+            exit 0
+          fi
+
+          current_head="$(gh api "repos/${GITHUB_REPOSITORY}/pulls/${PR_NUMBER}" --jq '.head.sha')"
+          if [[ "$current_head" != "$HEAD_SHA" ]]; then
+            echo "PR head moved from ${HEAD_SHA} to ${current_head}; refusing stale write." >&2
+            exit 1
+          fi
+
+          notice_sha="$(gh api \
+            "repos/${GITHUB_REPOSITORY}/contents/THIRD_PARTY_NOTICES.txt?ref=${HEAD_SHA}" \
+            --jq '.sha')"
+          base64 -w0 THIRD_PARTY_NOTICES.txt > /tmp/notices.b64
+
+          jq -n \
+            --arg message 'chore: refresh third-party notices' \
+            --rawfile content /tmp/notices.b64 \
+            --arg branch "$HEAD_REF" \
+            --arg sha "$notice_sha" \
+            '{message: $message, content: $content, branch: $branch, sha: $sha}' \
+            | gh api --method PUT \
+                "repos/${GITHUB_REPOSITORY}/contents/THIRD_PARTY_NOTICES.txt" \
+                --input - \
+                >/dev/null
+
+          echo 'Updated THIRD_PARTY_NOTICES.txt on the Dependabot branch.'

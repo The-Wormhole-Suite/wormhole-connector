@@ -35,13 +35,9 @@ const adGuard: ConnectorSettingsStorage = {
 }
 
 const startPrefixProxy = async (
-  targetBaseUrl: string,
+  targetPort: 18080 | 18081,
   prefix: string,
 ): Promise<{ baseUrl: string; close: () => Promise<void> }> => {
-  const target = new URL(targetBaseUrl)
-  if (target.protocol !== 'http:') {
-    throw new Error('Live prefix proxy expects the local HTTP test backends')
-  }
   const normalizedPrefix = `/${prefix.replace(/^\/+|\/+$/g, '')}`
   const server = createServer((incoming, outgoing) => {
     const requestUrl = new URL(incoming.url ?? '/', 'http://proxy.invalid')
@@ -57,12 +53,13 @@ const startPrefixProxy = async (
       return
     }
 
-    const upstreamUrl = new URL(`${upstreamPath}${requestUrl.search}`, target)
     const upstream = httpRequest(
-      upstreamUrl,
       {
+        hostname: '127.0.0.1',
+        port: targetPort,
+        path: `${upstreamPath}${requestUrl.search}`,
         method: incoming.method,
-        headers: { ...incoming.headers, host: upstreamUrl.host },
+        headers: { ...incoming.headers, host: `127.0.0.1:${targetPort}` },
       },
       (response) => {
         outgoing.writeHead(response.statusCode ?? 502, response.headers)
@@ -130,8 +127,8 @@ test('AdGuard Home /control URL ending works against the live API', async () => 
 
 test('custom reverse-proxy prefixes work against both live backends', async () => {
   const [piHoleProxy, adGuardProxy] = await Promise.all([
-    startPrefixProxy(piHole.pi_uri_base!, 'wormhole-pihole'),
-    startPrefixProxy(adGuard.pi_uri_base!, 'wormhole-adguard'),
+    startPrefixProxy(18080, 'wormhole-pihole'),
+    startPrefixProxy(18081, 'wormhole-adguard'),
   ])
   const proxiedPiHole: ConnectorSettingsStorage = {
     ...piHole,

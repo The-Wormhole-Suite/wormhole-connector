@@ -89,5 +89,8 @@
 	"bugs": {
 		"url": "https://github.com/HyperCriSiS/pihole-browser-extension/issues"
 	},
-	"homepage": "https://github.com/HyperCriSiS/pihole-browser-extension#readme"
+	"homepage": "https://github.com/HyperCriSiS/pihole-browser-extension#readme",
+	"overrides": {
+		"nanoid": "3.3.18"
+	}
 }

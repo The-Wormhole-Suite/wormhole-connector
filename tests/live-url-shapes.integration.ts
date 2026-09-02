@@ -1,5 +1,5 @@
 import assert from 'node:assert/strict'
-import { createServer, request as httpRequest } from 'node:http'
+import { createServer } from 'node:http'
 import test from 'node:test'
 import AdGuardHomeApiService from '../src/service/AdGuardHomeApiService'
 import PiHoleApiService from '../src/service/PiHoleApiService'
@@ -34,42 +34,101 @@ const adGuard: ConnectorSettingsStorage = {
   api_key: requiredEnv('ADGUARD_PASSWORD'),
 }
 
+const requestHopByHopHeaders = new Set([
+  'accept-encoding',
+  'connection',
+  'content-length',
+  'host',
+  'keep-alive',
+  'proxy-connection',
+  'te',
+  'trailer',
+  'transfer-encoding',
+  'upgrade',
+])
+
+const responseHopByHopHeaders = new Set([
+  'connection',
+  'content-encoding',
+  'content-length',
+  'keep-alive',
+  'transfer-encoding',
+])
+
 const startPrefixProxy = async (
   targetPort: 18080 | 18081,
   prefix: string,
 ): Promise<{ baseUrl: string; close: () => Promise<void> }> => {
   const normalizedPrefix = `/${prefix.replace(/^\/+|\/+$/g, '')}`
+  const upstreamOrigin =
+    targetPort === 18080
+      ? 'http://127.0.0.1:18080'
+      : 'http://127.0.0.1:18081'
+
   const server = createServer((incoming, outgoing) => {
-    const requestUrl = new URL(incoming.url ?? '/', 'http://proxy.invalid')
-    let upstreamPath: string | undefined
-    if (requestUrl.pathname === normalizedPrefix) {
-      upstreamPath = '/'
-    } else if (requestUrl.pathname.startsWith(`${normalizedPrefix}/`)) {
-      upstreamPath = requestUrl.pathname.slice(normalizedPrefix.length)
-    }
+    void (async () => {
+      try {
+        const requestUrl = new URL(incoming.url ?? '/', 'http://proxy.invalid')
+        let upstreamPath: string | undefined
+        if (requestUrl.pathname === normalizedPrefix) {
+          upstreamPath = '/'
+        } else if (requestUrl.pathname.startsWith(`${normalizedPrefix}/`)) {
+          upstreamPath = requestUrl.pathname.slice(normalizedPrefix.length)
+        }
 
-    if (!upstreamPath) {
-      outgoing.writeHead(404).end('Unknown proxy prefix')
-      return
-    }
+        if (!upstreamPath) {
+          outgoing.writeHead(404).end('Unknown proxy prefix')
+          return
+        }
 
-    const upstream = httpRequest(
-      {
-        hostname: '127.0.0.1',
-        port: targetPort,
-        path: `${upstreamPath}${requestUrl.search}`,
-        method: incoming.method,
-        headers: { ...incoming.headers, host: `127.0.0.1:${targetPort}` },
-      },
-      (response) => {
-        outgoing.writeHead(response.statusCode ?? 502, response.headers)
-        response.pipe(outgoing)
-      },
-    )
-    upstream.on('error', (reason) => {
-      outgoing.writeHead(502).end(reason.message)
-    })
-    incoming.pipe(upstream)
+        const headers = new Headers()
+        for (const [name, value] of Object.entries(incoming.headers)) {
+          if (
+            typeof value === 'undefined' ||
+            requestHopByHopHeaders.has(name.toLowerCase())
+          ) {
+            continue
+          }
+          headers.set(name, Array.isArray(value) ? value.join(', ') : value)
+        }
+        headers.set('accept-encoding', 'identity')
+
+        const chunks: Buffer[] = []
+        for await (const chunk of incoming) {
+          chunks.push(Buffer.isBuffer(chunk) ? chunk : Buffer.from(chunk))
+        }
+        const body = Buffer.concat(chunks)
+
+        const upstreamUrl = new URL(upstreamOrigin)
+        upstreamUrl.pathname = upstreamPath
+        upstreamUrl.search = requestUrl.search
+
+        const response = await fetch(upstreamUrl, {
+          method: incoming.method,
+          headers,
+          body:
+            incoming.method === 'GET' || incoming.method === 'HEAD'
+              ? undefined
+              : body,
+          redirect: 'manual',
+        })
+
+        const responseHeaders: Record<string, string> = {}
+        response.headers.forEach((value, name) => {
+          if (!responseHopByHopHeaders.has(name.toLowerCase())) {
+            responseHeaders[name] = value
+          }
+        })
+        outgoing.writeHead(response.status, responseHeaders)
+        outgoing.end(Buffer.from(await response.arrayBuffer()))
+      } catch (reason) {
+        const message = reason instanceof Error ? reason.message : String(reason)
+        if (!outgoing.headersSent) {
+          outgoing.writeHead(502)
+        }
+        outgoing.end(message)
+      }
+    })()
   })
 
   await new Promise<void>((resolve, reject) => {

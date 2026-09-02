@@ -1,0 +1,66 @@
+name: Bootstrap nanoid notice refresh
+
+on:
+  push:
+    branches:
+      - security/nanoid-3.3.18
+
+permissions:
+  contents: write
+
+jobs:
+  refresh:
+    if: github.actor == 'HyperCriSiS'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out security branch
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+          show-progress: false
+
+      - name: Set up Node.js
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: package-lock.json
+
+      - name: Install locked dependency metadata without scripts
+        run: npm ci --ignore-scripts --prefer-offline --no-audit --no-fund --loglevel=error
+
+      - name: Regenerate third-party notices
+        run: node scripts/generate-third-party-notices.mjs
+
+      - name: Verify nanoid notice version
+        shell: bash
+        run: |
+          set -euo pipefail
+          grep -qx 'nanoid@3.3.18' THIRD_PARTY_NOTICES.txt
+          if grep -qx 'nanoid@3.3.16' THIRD_PARTY_NOTICES.txt; then
+            echo 'Stale nanoid 3.3.16 notice remains.' >&2
+            exit 1
+          fi
+
+      - name: Remove bootstrap workflow and commit result
+        env:
+          GH_TOKEN: ${{ github.token }}
+        shell: bash
+        run: |
+          set -euo pipefail
+          rm .github/workflows/bootstrap-nanoid-notices.yml
+
+          unexpected="$(git diff --name-only | grep -Ev '^(THIRD_PARTY_NOTICES\.txt|\.github/workflows/bootstrap-nanoid-notices\.yml)$' || true)"
+          if [[ -n "$unexpected" ]]; then
+            echo 'Unexpected files changed during notice regeneration:' >&2
+            printf '%s\n' "$unexpected" >&2
+            exit 1
+          fi
+
+          git config user.name 'github-actions[bot]'
+          git config user.email '41898282+github-actions[bot]@users.noreply.github.com'
+          git add THIRD_PARTY_NOTICES.txt .github/workflows/bootstrap-nanoid-notices.yml
+          git commit -m 'docs: refresh nanoid third-party notice'
+          git push "https://x-access-token:${GH_TOKEN}@github.com/${GITHUB_REPOSITORY}.git" "HEAD:${GITHUB_REF_NAME}"

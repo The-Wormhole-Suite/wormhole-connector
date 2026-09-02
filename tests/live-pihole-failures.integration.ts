@@ -87,6 +87,9 @@ const piHoleSecond: ConnectorSettingsStorage = {
   api_key: requiredEnv('PIHOLE_SECOND_PASSWORD'),
 }
 
+const sleep = (milliseconds: number): Promise<void> =>
+  new Promise((resolve) => setTimeout(resolve, milliseconds))
+
 const piHoleRaw = async (
   instance: ConnectorSettingsStorage,
   path: string,
@@ -96,23 +99,36 @@ const piHoleRaw = async (
   const sid = await StorageService.getSid(instance.pi_uri_base!)
   assert.ok(sid)
 
-  const response = await fetch(
-    new URL(path, getPiHoleApiBase(instance.pi_uri_base!)),
-    {
-      ...init,
-      headers: {
-        'X-FTL-SID': sid,
-        ...(init.body ? { 'Content-Type': 'application/json' } : {}),
-        ...init.headers,
+  for (let attempt = 0; attempt < 5; attempt += 1) {
+    const response = await fetch(
+      new URL(path, getPiHoleApiBase(instance.pi_uri_base!)),
+      {
+        ...init,
+        headers: {
+          'X-FTL-SID': sid,
+          ...(init.body ? { 'Content-Type': 'application/json' } : {}),
+          ...init.headers,
+        },
       },
-    },
-  )
-  if (!response.ok) {
+    )
+    if (response.ok) {
+      return response
+    }
+
+    const responseBody = await response.text()
+    const transientDatabaseLock =
+      response.status === 400 && responseBody.includes('database is locked')
+    if (transientDatabaseLock && attempt < 4) {
+      await sleep(100 * (attempt + 1))
+      continue
+    }
+
     throw new Error(
-      `Pi-hole fixture request ${path} failed with ${response.status}: ${await response.text()}`,
+      `Pi-hole fixture request ${path} failed with ${response.status}: ${responseBody}`,
     )
   }
-  return response
+
+  throw new Error(`Pi-hole fixture request ${path} exhausted retries`)
 }
 
 const createPiHoleGroup = async (

@@ -60,6 +60,7 @@ const startPrefixProxy = async (
   prefix: string,
 ): Promise<{ baseUrl: string; close: () => Promise<void> }> => {
   const normalizedPrefix = `/${prefix.replace(/^\/+|\/+$/g, '')}`
+  // This fixture may only forward to the two fixed loopback test backends.
   const upstreamOrigin =
     targetPort === 18080 ? 'http://127.0.0.1:18080' : 'http://127.0.0.1:18081'
 

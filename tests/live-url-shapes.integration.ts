@@ -61,9 +61,7 @@ const startPrefixProxy = async (
 ): Promise<{ baseUrl: string; close: () => Promise<void> }> => {
   const normalizedPrefix = `/${prefix.replace(/^\/+|\/+$/g, '')}`
   const upstreamOrigin =
-    targetPort === 18080
-      ? 'http://127.0.0.1:18080'
-      : 'http://127.0.0.1:18081'
+    targetPort === 18080 ? 'http://127.0.0.1:18080' : 'http://127.0.0.1:18081'
 
   const server = createServer((incoming, outgoing) => {
     void (async () => {
@@ -122,7 +120,8 @@ const startPrefixProxy = async (
         outgoing.writeHead(response.status, responseHeaders)
         outgoing.end(Buffer.from(await response.arrayBuffer()))
       } catch (reason) {
-        const message = reason instanceof Error ? reason.message : String(reason)
+        const message =
+          reason instanceof Error ? reason.message : String(reason)
         if (!outgoing.headersSent) {
           outgoing.writeHead(502)
         }

@@ -1,11 +1,20 @@
 name: CI
 
 on:
+  workflow_dispatch:
   pull_request:
+    paths-ignore:
+      - '**/*.md'
+      - '.github/ISSUE_TEMPLATE/**'
+      - '.github/PULL_REQUEST_TEMPLATE*'
   push:
     branches:
       - master
       - dev
+    paths-ignore:
+      - '**/*.md'
+      - '.github/ISSUE_TEMPLATE/**'
+      - '.github/PULL_REQUEST_TEMPLATE*'
 
 permissions:
   contents: read
@@ -22,12 +31,13 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v7
+        uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
+          persist-credentials: false
           show-progress: false
 
       - name: Set up Node.js
-        uses: actions/setup-node@v7
+        uses: actions/setup-node@820762786026740c76f36085b0efc47a31fe5020 # v7.0.0
         with:
           node-version: '22'
           cache: npm
@@ -40,15 +50,18 @@ jobs:
         run: npm run check
 
       - name: Prepare browser artifacts
+        if: github.event_name == 'workflow_dispatch'
         run: npm run package:artifacts
 
       - name: Read package version
+        if: github.event_name == 'workflow_dispatch'
         id: package
         run: |
           node -e "process.stdout.write('version=' + require('./package.json').version + '\n')" >> "$GITHUB_OUTPUT"
 
       - name: Upload Firefox package
-        uses: actions/upload-artifact@v7
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: pihole-browser-extension-${{ steps.package.outputs.version }}-firefox-unsigned
           path: artifacts/pihole-browser-extension-${{ steps.package.outputs.version }}-firefox-unsigned.xpi
@@ -57,7 +70,8 @@ jobs:
           retention-days: 14
 
       - name: Upload Chrome package
-        uses: actions/upload-artifact@v7
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: pihole-browser-extension-${{ steps.package.outputs.version }}-chrome
           path: artifacts/pihole-browser-extension-${{ steps.package.outputs.version }}-chrome.zip
@@ -66,7 +80,8 @@ jobs:
           retention-days: 14
 
       - name: Upload SHA-256 checksums
-        uses: actions/upload-artifact@v7
+        if: github.event_name == 'workflow_dispatch'
+        uses: actions/upload-artifact@043fb46d1a93c77aae656e7c1c64a875d1fc6a0a # v7.0.1
         with:
           name: pihole-browser-extension-${{ steps.package.outputs.version }}-checksums
           path: artifacts/SHA256SUMS.txt

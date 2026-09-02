@@ -151,33 +151,49 @@ jobs:
             exit 1
           fi
 
-          gh api "repos/${GITHUB_REPOSITORY}/contents/THIRD_PARTY_NOTICES.txt?ref=${HEAD_SHA}" \
-            --jq '.content' \
-            | tr -d '\n' \
-            | base64 --decode \
-            > /tmp/current-notices.txt
+          notice_sha=''
+          if gh api \
+            "repos/${GITHUB_REPOSITORY}/contents/THIRD_PARTY_NOTICES.txt?ref=${HEAD_SHA}" \
+            > /tmp/notice-meta.json 2> /tmp/notice-error.txt; then
+            jq -r '.content' /tmp/notice-meta.json \
+              | tr -d '\n' \
+              | base64 --decode \
+              > /tmp/current-notices.txt
+            notice_sha="$(jq -r '.sha' /tmp/notice-meta.json)"
+          elif grep -q 'HTTP 404' /tmp/notice-error.txt; then
+            : > /tmp/current-notices.txt
+          else
+            cat /tmp/notice-error.txt >&2
+            exit 1
+          fi
 
-          if cmp -s generated/THIRD_PARTY_NOTICES.txt /tmp/current-notices.txt; then
+          if [[ -n "$notice_sha" ]] && cmp -s generated/THIRD_PARTY_NOTICES.txt /tmp/current-notices.txt; then
             echo 'THIRD_PARTY_NOTICES.txt is already current.'
             echo 'changed=false' >> "$GITHUB_OUTPUT"
             echo "head_sha=${HEAD_SHA}" >> "$GITHUB_OUTPUT"
             exit 0
           fi
 
-          notice_sha="$(gh api \
-            "repos/${GITHUB_REPOSITORY}/contents/THIRD_PARTY_NOTICES.txt?ref=${HEAD_SHA}" \
-            --jq '.sha')"
           base64 -w0 generated/THIRD_PARTY_NOTICES.txt > /tmp/notices.b64
 
-          response="$(jq -n \
-            --arg message 'chore: refresh third-party notices' \
-            --rawfile content /tmp/notices.b64 \
-            --arg branch "$HEAD_REF" \
-            --arg sha "$notice_sha" \
-            '{message: $message, content: $content, branch: $branch, sha: $sha}' \
-            | gh api --method PUT \
-                "repos/${GITHUB_REPOSITORY}/contents/THIRD_PARTY_NOTICES.txt" \
-                --input -)"
+          if [[ -n "$notice_sha" ]]; then
+            payload="$(jq -n \
+              --arg message 'chore: refresh third-party notices' \
+              --rawfile content /tmp/notices.b64 \
+              --arg branch "$HEAD_REF" \
+              --arg sha "$notice_sha" \
+              '{message: $message, content: $content, branch: $branch, sha: $sha}')"
+          else
+            payload="$(jq -n \
+              --arg message 'chore: refresh third-party notices' \
+              --rawfile content /tmp/notices.b64 \
+              --arg branch "$HEAD_REF" \
+              '{message: $message, content: $content, branch: $branch}')"
+          fi
+
+          response="$(gh api --method PUT \
+            "repos/${GITHUB_REPOSITORY}/contents/THIRD_PARTY_NOTICES.txt" \
+            --input - <<< "$payload")"
 
           new_head="$(jq -r '.commit.sha' <<< "$response")"
           if [[ ! "$new_head" =~ ^[0-9a-f]{40}$ ]]; then

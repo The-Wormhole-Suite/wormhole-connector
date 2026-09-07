@@ -2641,7 +2641,7 @@ copyright notices for these dependencies are available in
 
 
 ==============================================================================
-css-loader@7.1.4
+css-loader@7.1.5
 License: MIT
 Source: webpack/css-loader
 
@@ -5451,7 +5451,7 @@ SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 
 
 ==============================================================================
-webpack@5.110.1
+webpack@5.110.3
 License: MIT
 Source: https://github.com/webpack/webpack
 

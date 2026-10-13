@@ -1,6 +1,14 @@
 # Wormhole Connector Roadmap
 
-Last updated: 2026-09-02
+Last updated: 2026-10-13
+
+## Strategy update — modernization before the next public release (2026-10-13)
+
+**Canonical implementation plan:** [modernization epic #92](https://github.com/The-Wormhole-Suite/wormhole-connector/issues/92) with tracked phases [#93 inventory](https://github.com/The-Wormhole-Suite/wormhole-connector/issues/93), [#94 WXT/Vite](https://github.com/The-Wormhole-Suite/wormhole-connector/issues/94), [#95 pihole-js](https://github.com/The-Wormhole-Suite/wormhole-connector/issues/95), [#96 AdGuard OpenAPI/Orval](https://github.com/The-Wormhole-Suite/wormhole-connector/issues/96), [#97 popup/UI](https://github.com/The-Wormhole-Suite/wormhole-connector/issues/97), and [#98 release requalification](https://github.com/The-Wormhole-Suite/wormhole-connector/issues/98).
+
+The planned order has **changed by project decision**: undertake the WXT/Vite migration, Pi-hole v6 `pihole-js` adapter, and a reproducibly generated full AdGuard Home client **before** releasing the modernized public build. Keep the full existing Pi-hole/AdGuard transaction/session/timer/rollback semantics and browser popup/options features. The six suite-wide finalized themes belong to a separate design-system effort; prepare neutral, theme-ready UI components here without copying third-party AGPL code or artwork.
+
+**Do not rewrite historic release evidence.** The previous validated candidate `87bb4677b08951d53406c3f246d8efb1328f6904` on `release/public-hardening-candidate` remains frozen as a regression reference. Issue #61's existing passing CI artifacts and pending manual checkboxes refer to that **old commit only**. Before public release, requalify the modernized candidate against a **new exact SHA**, including fresh live-backend and real-browser results. Neither simulations nor older candidate checks count as new release verification.
 
 ## Current status
 
@@ -111,13 +119,16 @@ These items require real systems or final browser/store interaction and should n
 
 - [ ] Evaluate private AdGuard DNS Cloud integration as a separate feature after the self-hosted release is stable.
 - [ ] Revisit Firefox Android support after explicit compatibility testing.
-- [ ] Continue UI/visual refinements only after release-critical functionality is validated, unless a visual defect blocks usability.
+- [ ] Finalize the six cross-project Wormhole Suite themes separately; develop theme-ready popup/UI structure during modernization (#97), without blocking API and build migration on final visual theme selection.
 
-## Next recommended sequence
+## Next recommended sequence — supersedes the prior release-first sequence
 
-1. Perform and record the real Pi-hole v6 and AdGuard Home integration matrix in issue #61 against `release/public-hardening-candidate`.
-2. Perform and record Firefox and Chromium desktop checks in issue #61 against the same candidate.
-3. Choose one new, unique release version (do not reuse `5.0.1`, `5.1.0-beta.1`, or `5.1.0-beta.2`).
-4. Apply it with `npm run version:set -- <semver>` so package metadata, lockfile metadata, both numeric manifest versions, and both `version_name` fields stay synchronized.
-5. Verify it with `npm run verify:release -- v<semver>` and re-run the complete CI/package/checksum pipeline on the versioned final release commit.
-6. Reconcile the fully validated release state with `master` without dropping the stable-branch security/CI maintenance, confirm Push Protection in repository settings if available, and publish to the stores only after all release gates pass.
+1. Execute [#93](https://github.com/The-Wormhole-Suite/wormhole-connector/issues/93): inventory existing features, contracts and parity tests; pin tool/library versions.
+2. Execute [#94](https://github.com/The-Wormhole-Suite/wormhole-connector/issues/94): WXT/Vite migration with Firefox MV2 / Chrome MV3 and AMO security compatibility, preserving actual popups/options.
+3. Execute [#95](https://github.com/The-Wormhole-Suite/wormhole-connector/issues/95): pinned MIT `pihole-js` transport behind our existing Pi-hole adapter; preserve browser-coordinated sessions, reverse proxies and rollback.
+4. Execute [#96](https://github.com/The-Wormhole-Suite/wormhole-connector/issues/96): generate a complete AdGuard Home SDK using pinned official OpenAPI + selected validated generator (evaluate Orval); preserve foreign-rule protection and transaction safeguards.
+5. Execute [#97](https://github.com/The-Wormhole-Suite/wormhole-connector/issues/97): modernize toolbar popup and options, and prepare shared theme design tokens/components; develop final six-theme design independently.
+6. Execute [#98](https://github.com/The-Wormhole-Suite/wormhole-connector/issues/98): compare parity, run all automated/live integrations, and record new real Firefox/Chromium and real backend tests per [#61](https://github.com/The-Wormhole-Suite/wormhole-connector/issues/61) on the exact new candidate SHA.
+7. **Only then** choose a unique release version, synchronize package/lockfile/browser manifest versions, rerun all artifacts/checksums, reconcile `master` with stable security fixes, and publish AMO/Chrome releases.
+
+Do not add redundant CI or extra artifact generation solely because of documentation updates. The legacy public-release preparation checklist above remains a necessary final gate, not evidence that the modernized build is already tested.

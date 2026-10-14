@@ -18,12 +18,7 @@ const commandIds = [
   'hotkey-whitelist-current-domain',
 ]
 
-const requiredPermissions = [
-  'activeTab',
-  'alarms',
-  'contextMenus',
-  'storage',
-]
+const requiredPermissions = ['activeTab', 'alarms', 'contextMenus', 'storage']
 
 test('browser toolbar popup, options, version and shortcuts keep parity', () => {
   assert.equal(chromeManifest.action.default_popup, 'popup.html')
@@ -48,10 +43,7 @@ test('Chrome MV3 and Firefox MV2 retain their distinct background lifecycles', (
 })
 
 test('permissions and Firefox 140+ declarations do not silently drift', () => {
-  assert.deepEqual(
-    [...chromeManifest.permissions].sort(),
-    requiredPermissions,
-  )
+  assert.deepEqual([...chromeManifest.permissions].sort(), requiredPermissions)
   assert.deepEqual(
     firefoxManifest.permissions
       .filter((permission: string) => permission !== '<all_urls>')
@@ -59,10 +51,10 @@ test('permissions and Firefox 140+ declarations do not silently drift', () => {
     requiredPermissions,
   )
   assert.ok(firefoxManifest.permissions.includes('<all_urls>'))
-  assert.deepEqual(
-    [...chromeManifest.host_permissions].sort(),
-    ['http://*/*', 'https://*/*'],
-  )
+  assert.deepEqual([...chromeManifest.host_permissions].sort(), [
+    'http://*/*',
+    'https://*/*',
+  ])
   assert.equal(
     firefoxManifest.browser_specific_settings.gecko.id,
     'wormhole-connector@hypercrisis.dev',
@@ -72,7 +64,10 @@ test('permissions and Firefox 140+ declarations do not silently drift', () => {
     '140.0',
   )
   assert.deepEqual(
-    [...firefoxManifest.browser_specific_settings.gecko.data_collection_permissions.required].sort(),
+    [
+      ...firefoxManifest.browser_specific_settings.gecko
+        .data_collection_permissions.required,
+    ].sort(),
     ['authenticationInfo', 'browsingActivity'],
   )
 })

@@ -3,9 +3,9 @@ import { createRequire } from 'node:module'
 import test from 'node:test'
 
 const require = createRequire(import.meta.url)
-const { createAmoSafeDomVitePlugin } = require(
-  '../scripts/loaders/amo-safe-dom-vite-plugin.cjs',
-)
+const {
+  createAmoSafeDomVitePlugin,
+} = require('../scripts/loaders/amo-safe-dom-vite-plugin.cjs')
 
 const vueSource = [
   '      templateContainer.innerHTML = unsafeToTrustedHTML(',

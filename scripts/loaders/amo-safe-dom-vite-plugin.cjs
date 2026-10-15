@@ -1,5 +1,8 @@
 'use strict'
 
+/* eslint-disable @typescript-eslint/no-require-imports */
+/* global require, module */
+
 const amoSafeDomLoader = require('./amo-safe-dom-loader.cjs')
 
 const normalizeModuleId = (id) => id.split('?')[0].replace(/\\/g, '/')

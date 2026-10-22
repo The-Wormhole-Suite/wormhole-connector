@@ -3414,7 +3414,7 @@ The complete list of contributors can be found at:
 
 
 ==============================================================================
-follow-redirects@1.16.0
+follow-redirects@1.16.1
 License: MIT
 Source: ssh://git@github.com/follow-redirects/follow-redirects
 
